@@ -192,10 +192,10 @@ const genGenericPrint=(title,bodyHtml,co)=>openPrint(printWrapper("<div style=\"
 /* ══════════ DESIGN SYSTEM ══════════ */
 const ss={
   card:{background:C.cd,borderRadius:12,border:BD,boxShadow:"0 4px 24px rgba(0,0,0,.3)"},
-  th:{padding:"9px 12px",color:C.si,fontSize:10,fontFamily:"monospace",fontWeight:600,textAlign:"left",borderBottom:BD,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:.5},
-  td:{padding:"9px 12px",fontSize:11,color:"#CBD5E1",borderBottom:"1px solid #0E1628"},
-  inp:{background:"#060C1A",border:"1px solid #1E2D45",borderRadius:7,color:"#E2E8F0",padding:"8px 12px",fontSize:12,width:"100%",marginBottom:8,outline:"none",boxSizing:"border-box",fontFamily:"monospace"},
-  lbl:{display:"block",color:C.si,fontSize:10,fontFamily:"monospace",marginBottom:3,letterSpacing:.5,textTransform:"uppercase"},
+  th:{padding:"12px 16px",color:C.si,fontSize:11,fontFamily:"monospace",fontWeight:600,textAlign:"left",borderBottom:"2px solid #1A2840",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:1,background:"linear-gradient(180deg,#0A1223,#060C1A)"},
+  td:{padding:"12px 16px",fontSize:12,color:"#E2E8F0",borderBottom:"1px solid #1A2840",lineHeight:1.5},
+  inp:{background:"#060C1A",border:"1px solid #1E2D45",borderRadius:8,color:"#E2E8F0",padding:"10px 14px",fontSize:13,width:"100%",marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"monospace",transition:"all .2s"},
+  lbl:{display:"block",color:C.si,fontSize:11,fontFamily:"monospace",marginBottom:4,letterSpacing:1,textTransform:"uppercase",fontWeight:600},
 };
 const TT={background:"#0A1223",border:BD,borderRadius:8,fontSize:11,color:"#E2E8F0"};
 
@@ -255,12 +255,12 @@ function Tbl({cols,rows,foot,onEdit,onDel,onRcv,onPrint,rcvLabel,csvName,printLa
     </div>
     <div style={{...ss.card,overflowX:"auto"}}><table style={{borderCollapse:"collapse",width:"100%"}}>
       <thead><tr style={{background:"#060C1A"}}>{cols.map((c,i)=><th key={i} style={ss.th}>{c}</th>)}{onRcv&&<th style={{...ss.th,width:100}}>Action</th>}{hasAct&&<th style={{...ss.th,width:110}}>Edit/Del</th>}</tr></thead>
-      <tbody>{filt.length===0?<tr><td colSpan={cols.length+3} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No records</td></tr>:filt.map((r,i)=>{const oi=rows.indexOf(r);return <tr key={i} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>{r.map((c,j)=><td key={j} style={ss.td}>{c}</td>)}{onRcv&&<td style={ss.td}><div style={{display:"flex",gap:3}}>{onPrint&&<button onClick={()=>onPrint(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>}<button onClick={()=>onRcv(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(52,211,153,.3)",background:"rgba(52,211,153,.1)",color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>{rcvLabel||"Pay"}</button></div></td>}{hasAct&&<td style={ss.td}><div style={{display:"flex",gap:3}}>{onPrint&&!onRcv&&<button onClick={()=>onPrint(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>}{onEdit&&<button onClick={()=>onEdit(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>}{onDel&&<button onClick={()=>onDel(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>}</div></td>}</tr>;})}
+      <tbody>{filt.length===0?<tr><td colSpan={cols.length+3} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No records</td></tr>:filt.map((r,i)=>{const oi=rows.indexOf(r);return <tr key={i} style={{background:i%2===0?"transparent":"rgba(255,255,255,0.02)",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(245,158,11,0.06)"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"transparent":"rgba(255,255,255,0.02)"}>{r.map((c,j)=><td key={j} style={ss.td}>{c}</td>)}{onRcv&&<td style={ss.td}><div style={{display:"flex",gap:3}}>{onPrint&&<button onClick={()=>onPrint(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>}<button onClick={()=>onRcv(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(52,211,153,.3)",background:"rgba(52,211,153,.1)",color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>{rcvLabel||"Pay"}</button></div></td>}{hasAct&&<td style={ss.td}><div style={{display:"flex",gap:3}}>{onPrint&&!onRcv&&<button onClick={()=>onPrint(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>}{onEdit&&<button onClick={()=>onEdit(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>}{onDel&&<button onClick={()=>onDel(oi)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>}</div></td>}</tr>;})}
       </tbody>{foot&&<tfoot><tr style={{background:"#060C1A"}}>{foot.map((c,i)=><td key={i} style={{...ss.td,fontWeight:700,color:C.or,borderBottom:"none"}}>{c}</td>)}{onRcv&&<td style={{...ss.td,borderBottom:"none"}}/>}{hasAct&&<td style={{...ss.td,borderBottom:"none"}}/>}</tr></tfoot>}
     </table></div>
   </div>;
 }
-function MTbl({cols,rows,onEdit,onDel}){return <div style={{...ss.card,overflowX:"auto"}}><table style={{borderCollapse:"collapse",width:"100%"}}><thead><tr style={{background:"#060C1A"}}>{cols.map((c,i)=><th key={i} style={ss.th}>{c}</th>)}<th style={{...ss.th,width:110}}>Actions</th></tr></thead><tbody>{rows.length===0?<tr><td colSpan={cols.length+1} style={{...ss.td,textAlign:"center",color:"#334155",padding:28}}>No records</td></tr>:rows.map((r,i)=><tr key={i} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>{r.map((c,j)=><td key={j} style={ss.td}>{c}</td>)}<td style={ss.td}><div style={{display:"flex",gap:4}}>{onEdit&&<button onClick={()=>onEdit(i)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>}{onDel&&<button onClick={()=>onDel(i)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>}</div></td></tr>)}</tbody></table></div>;}
+function MTbl({cols,rows,onEdit,onDel}){return <div style={{...ss.card,overflowX:"auto"}}><table style={{borderCollapse:"collapse",width:"100%"}}><thead><tr style={{background:"#060C1A"}}>{cols.map((c,i)=><th key={i} style={ss.th}>{c}</th>)}<th style={{...ss.th,width:110}}>Actions</th></tr></thead><tbody>{rows.length===0?<tr><td colSpan={cols.length+1} style={{...ss.td,textAlign:"center",color:"#334155",padding:28}}>No records</td></tr>:rows.map((r,i)=><tr key={i} style={{background:i%2===0?"transparent":"rgba(255,255,255,0.02)",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(245,158,11,0.06)"} onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"transparent":"rgba(255,255,255,0.02)"}>{r.map((c,j)=><td key={j} style={ss.td}>{c}</td>)}<td style={ss.td}><div style={{display:"flex",gap:4}}>{onEdit&&<button onClick={()=>onEdit(i)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>}{onDel&&<button onClick={()=>onDel(i)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>}</div></td></tr>)}</tbody></table></div>;}
 
 function Clock(){const[now,setNow]=useState(new Date());useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);const h=now.getHours(),m=now.getMinutes(),s=now.getSeconds(),ampm=h>=12?"PM":"AM",hh=String(h%12||12).padStart(2,"0"),mm=String(m).padStart(2,"0"),ss2=String(s).padStart(2,"0");return <div style={{textAlign:"right",lineHeight:1.3}}><div style={{color:C.or,fontFamily:"monospace",fontWeight:700,fontSize:14,letterSpacing:1.5}}>{hh}:{mm}:{ss2}<span style={{fontSize:10,color:C.gr,marginLeft:4}}>{ampm}</span></div><div style={{color:"#334155",fontSize:10}}>{DAYS[now.getDay()]} {now.getDate()} {MONTHS[now.getMonth()]} {now.getFullYear()}</div></div>;}
 
@@ -333,6 +333,7 @@ function Main({user,onLogout,settings,setSettings}){
   const pickImage=(cb)=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>cb(ev.target.result);r.readAsDataURL(f);};inp.click();};
   const[repSub,setRepSub]=useState("pl");
   const[mTab,setMTab]=useState("sites");
+  const[showKPIs,setShowKPIs]=useState(true);
   const[data,setData]=useState(()=>{const d=loadData()||INIT_D;if(!d.wcPolicies)d.wcPolicies=INIT_WC;return d;});
   const[masters,setMasters]=useState(INIT_M);
   const[modal,setModal]=useState(null);
@@ -544,6 +545,7 @@ function Main({user,onLogout,settings,setSettings}){
         <div style={{padding:"14px 18px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,borderBottom:"1px solid #1A2840",paddingBottom:14,background:"linear-gradient(180deg,#060C1A,transparent)"}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${G(curTab.color||C.or,0.2)},${G(curTab.color||C.or,0.05)})`,border:`1px solid ${G(curTab.color||C.or,0.3)}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{curTab.icon}</div><div><h2 style={{margin:0,color:"#E2E8F0",fontSize:16,fontWeight:700}}>{curTab.l}</h2><div style={{color:C.gr,fontSize:10,marginTop:1}}>{site==="ALL"?"All Sites":sName(site)} · {user.role}</div></div></div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            {tab==="dash"&&<Btn onClick={()=>setShowKPIs(!showKPIs)} color={C.gr} icon={showKPIs?"🙈":"👁"}>{showKPIs?"Hide KPIs":"Show KPIs"}</Btn>}
             {tab==="dpr"&&site!=="ALL"&&<Btn onClick={()=>openAdd("dpr")} color={C.bl} icon="＋">Add DPR</Btn>}
             {tab==="sales"&&salesSub==="so"&&site!=="ALL"&&<Btn onClick={()=>openAdd("so")} color={C.gn} icon="＋">Sale Order</Btn>}
             {tab==="sales"&&salesSub==="inv"&&site!=="ALL"&&<Btn onClick={()=>openAdd("sales")} color={C.gn} icon="＋">Invoice</Btn>}
@@ -571,18 +573,20 @@ function Main({user,onLogout,settings,setSettings}){
 
         {/* ══ DASHBOARD ══ */}
         {tab==="dash"&&<div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
-            <KCard icon="💰" label="Revenue" value={INR(k.tB)} sub={"GST "+INR(k.tG)} color={C.tl}/>
-            <KCard icon="📈" label="Gross Profit" value={INR(k.profit)} sub={"Margin "+k.margin+"%"} color={k.profit>=0?C.gn:C.rd}/>
-            <KCard icon="🏦" label="Bank Balance" value={INR(k.totalBankBal)} sub={masters.banks.length+" accounts"} color={C.or}/>
-            <KCard icon="💵" label="Petty Cash" value={INR(k.totalPettyBal)} sub={masters.pettyCash.length+" books"} color={C.pu}/>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
-            <KCard icon="🛒" label="Material Cost" value={INR(k.pB)} sub={"ITC "+INR(k.pG)} color={C.rd}/>
-            <KCard icon="🔧" label="Expenses" value={INR(k.tE)} color={C.rd}/>
-            <KCard icon="👷" label="Payroll Net" value={INR(k.tP)} color={C.bl}/>
-            <KCard icon="⏳" label="Net Receivable" value={INR(k.net)} color={C.pu}/>
-          </div>
+          {showKPIs && <div style={{marginBottom:14}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
+              <KCard icon="💰" label="Revenue" value={INR(k.tB)} sub={"GST "+INR(k.tG)} color={C.tl}/>
+              <KCard icon="📈" label="Gross Profit" value={INR(k.profit)} sub={"Margin "+k.margin+"%"} color={k.profit>=0?C.gn:C.rd}/>
+              <KCard icon="🏦" label="Bank Balance" value={INR(k.totalBankBal)} sub={masters.banks.length+" accounts"} color={C.or}/>
+              <KCard icon="💵" label="Petty Cash" value={INR(k.totalPettyBal)} sub={masters.pettyCash.length+" books"} color={C.pu}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+              <KCard icon="🛒" label="Material Cost" value={INR(k.pB)} sub={"ITC "+INR(k.pG)} color={C.rd}/>
+              <KCard icon="🔧" label="Expenses" value={INR(k.tE)} color={C.rd}/>
+              <KCard icon="👷" label="Payroll Net" value={INR(k.tP)} color={C.bl}/>
+              <KCard icon="⏳" label="Net Receivable" value={INR(k.net)} color={C.pu}/>
+            </div>
+          </div>}
           <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:12,marginBottom:12}}>
             <MiniCalendar/>
             <div style={{...ss.card,padding:14,background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{color:C.si,fontSize:10,marginBottom:10,letterSpacing:1,textTransform:"uppercase"}}>Financial Year {getFYStr()}</div>{[["Revenue",INR(k.tB),C.tl],["Expenses",INR(k.pB+k.tE),C.rd],["Payroll",INR(k.tP),C.pu],["Profit",INR(k.profit),k.profit>=0?C.gn:C.rd]].map(([l,v,c])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0A1223"}}><span style={{color:C.si,fontSize:11}}>{l}</span><span style={{color:c,fontWeight:700,fontFamily:"monospace"}}>{v}</span></div>)}</div>
@@ -1115,7 +1119,7 @@ function Main({user,onLogout,settings,setSettings}){
               {[["Output GST (Sales)",INR(gstReport.output.gst),C.or],["Input GST Available (ITC)",INR(gstReport.input.gst),C.gn],["ITC Already Claimed",INR(gstReport.input.gst-gstReport.unclaimed),C.gn],["Pending ITC",INR(gstReport.unclaimed),C.pu],["Net GST Payable",INR(Math.max(0,gstReport.net)),gstReport.net>0?C.rd:C.gn]].map(([l,v,c])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0A1223"}}><span style={{color:C.si,fontSize:11}}>{l}</span><span style={{color:c,fontWeight:600,fontFamily:"monospace"}}>{v}</span></div>)}
             </div>
             <Tbl cols={["Date","Invoice","Client/Vendor","Type","Taxable","GST%","GST Amt","ITC"]}
-              rows={[...(rData.sales||[]).map(s=>{const c=cS(s);return[s.date,s.inv,s.client,"Output",INR(c.basic),"—",<b key="g" style={{color:C.or}}>{INR(c.g)}</b>,"N/A"];}),(rData.purchases||[]).map(p=>{const c=cP(p);return[p.date,"BILL",p.vendor,"Input",INR(c.b),p.gst+"%",<b key="g" style={{color:C.gn}}>{INR(c.ga)}</b>,<Tag key="i" c={p.itcClaimed?"g":"r"} ch={p.itcClaimed?"Claimed":"Pending"}/>];})].flat()}
+              rows={[...(rData.sales||[]).map(s=>{const c=cS(s);return[s.date,s.inv,s.client,"Output",INR(c.basic),"—",<b key="g" style={{color:C.or}}>{INR(c.g)}</b>,"N/A"];}),...(rData.purchases||[]).map(p=>{const c=cP(p);return[p.date,"BILL",p.vendor,"Input",INR(c.b),p.gst+"%",<b key="g" style={{color:C.gn}}>{INR(c.ga)}</b>,<Tag key="i" c={p.itcClaimed?"g":"r"} ch={p.itcClaimed?"Claimed":"Pending"}/>];})]}
               csvName="gst_report"/>
             {(gstReport.hsnRows||[]).length>0&&<div style={{...ss.card,marginTop:12,overflow:"hidden"}}>
               <div style={{padding:"10px 14px",background:G(C.or,0.06),borderBottom:BD}}><span style={{color:C.or,fontWeight:700,fontSize:11}}>📊 HSN / SAC Wise GST Summary</span></div>
