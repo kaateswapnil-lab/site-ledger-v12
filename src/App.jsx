@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 
 /* ═══════════ DESIGN TOKENS ═══════════ */
-const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"monospace",fontSize:12,logoUrl:""};
+const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"monospace",fontSize:14,logoUrl:""};
 const getSettings=()=>{try{return {...DEF_SETTINGS,...JSON.parse(localStorage.getItem("sl_settings")||"{}")};}catch{return DEF_SETTINGS;}};
 const saveSettings=s=>localStorage.setItem("sl_settings",JSON.stringify(s));
 const loadData=()=>{try{const d=localStorage.getItem("sl_data");return d?JSON.parse(d):null;}catch{return null;}};
@@ -192,10 +192,10 @@ const genGenericPrint=(title,bodyHtml,co)=>openPrint(printWrapper("<div style=\"
 /* ══════════ DESIGN SYSTEM ══════════ */
 const ss={
   card:{background:C.cd,borderRadius:12,border:BD,boxShadow:"0 4px 24px rgba(0,0,0,.3)"},
-  th:{padding:"12px 16px",color:C.si,fontSize:11,fontFamily:"monospace",fontWeight:600,textAlign:"left",borderBottom:"2px solid #1A2840",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:1,background:"linear-gradient(180deg,#0A1223,#060C1A)"},
-  td:{padding:"12px 16px",fontSize:12,color:"#E2E8F0",borderBottom:"1px solid #1A2840",lineHeight:1.5},
-  inp:{background:"#060C1A",border:"1px solid #1E2D45",borderRadius:8,color:"#E2E8F0",padding:"10px 14px",fontSize:13,width:"100%",marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"monospace",transition:"all .2s"},
-  lbl:{display:"block",color:C.si,fontSize:11,fontFamily:"monospace",marginBottom:4,letterSpacing:1,textTransform:"uppercase",fontWeight:600},
+  th:{padding:"14px 16px",color:"#FFFFFF",fontSize:13,fontFamily:"monospace",fontWeight:800,textAlign:"left",borderBottom:"2px solid #1E2D45",borderRight:"1px solid #1E2D45",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:1,background:"linear-gradient(180deg,#162236,#0E1628)"},
+  td:{padding:"14px 16px",fontSize:14,color:"#FFFFFF",borderBottom:"1px solid #1E2D45",borderRight:"1px solid #1E2D45",lineHeight:1.6,fontWeight:600},
+  inp:{background:"#060C1A",border:"1px solid #1E2D45",borderRadius:8,color:"#FFFFFF",padding:"12px 14px",fontSize:14,width:"100%",marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"monospace",transition:"all .2s"},
+  lbl:{display:"block",color:"#E2E8F0",fontSize:12,fontFamily:"monospace",marginBottom:4,letterSpacing:1,textTransform:"uppercase",fontWeight:700},
 };
 const TT={background:"#0A1223",border:BD,borderRadius:8,fontSize:11,color:"#E2E8F0"};
 
