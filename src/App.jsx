@@ -356,9 +356,42 @@ function Main({user,onLogout,settings,setSettings}){
 
   const upd=(key,fn)=>setData(p=>({...p,[key]:fn(p[key]||[])}));
   const updM=(key,fn)=>setMasters(p=>({...p,[key]:fn(p[key]||[])}));
-  const saveRec=(key,item)=>upd(key,arr=>modal.oid?arr.map(x=>x.id===modal.oid?{...item,id:modal.oid}:x):[...arr,{...item,id:uid()}]);
-  const delRec=(key,id)=>upd(key,arr=>arr.filter(x=>x.id!==id));
-  const delM=(key,idx)=>updM(key,arr=>arr.filter((_,i)=>i!==idx));
+
+  const isApprover = ["Admin", "Manager", "Owner", "Site Manager"].includes(user.role);
+  const checkApproval = (action, targetType, targetKey, payload, targetId) => {
+    if (isApprover) return false;
+    upd("pendingApprovals", arr => [...arr, { id: uid(), action, targetType, targetKey, payload, targetId, requestedBy: user.name, timestamp: new Date().toISOString(), status: "pending" }]);
+    alert("Action submitted for approval.");
+    return true;
+  };
+
+  const handleApprove = (a) => {
+    if(a.targetType === "master") {
+      if(a.action === "add") updM(a.targetKey, arr => [...arr, { ...a.payload, id: uid() }]);
+      else if(a.action === "edit") updM(a.targetKey, arr => arr.map((x, i) => i === a.targetId ? { ...a.payload, id: x.id } : x));
+      else if(a.action === "delete") updM(a.targetKey, arr => arr.filter((_, i) => i !== a.targetId));
+    } else if(a.targetType === "txn") {
+      if(a.action === "add") upd(a.targetKey, arr => [...arr, { ...a.payload, id: uid() }]);
+      else if(a.action === "edit") upd(a.targetKey, arr => arr.map(x => x.id === a.targetId ? { ...a.payload, id: a.targetId } : x));
+      else if(a.action === "delete") upd(a.targetKey, arr => arr.filter(x => x.id !== a.targetId));
+      else if(a.action === "receive_pay") {
+        const payload = a.payload;
+        upd(a.targetKey, arr => arr.map(x => x.id === payload._oid ? { ...x, paidAmt: Math.min((x.paidAmt || 0) + payload._add, 999999999) } : x));
+        const vtype = payload._isSale ? "in" : "out";
+        const vDesc = (payload._isSale ? "Receipt " : "Payment ") + (payload.inv || payload.dnNo || payload.cnNo || payload.desc || "");
+        const nV = { id: uid(), date: payload.payDate, vtype, party: payload.client || payload.vendor || "", partyType: payload._isSale ? "client" : "vendor", siteId: payload.siteId || "", amt: payload._add, via: payload.via, accountId: payload.accountId, desc: vDesc, ref: payload.payRef || "" };
+        upd("vouchers", arr => [...arr, nV]);
+        if (payload.via === "bank" && payload.accountId) upd("bankTxns", arr => [...arr, { id: uid(), bankId: payload.accountId, date: payload.payDate, desc: vDesc, type: vtype === "in" ? "Cr" : "Dr", amt: payload._add, ref: payload.payRef || "" }]);
+        else if (payload.via === "petty" && payload.accountId) upd("pettyTxns", arr => [...arr, { id: uid(), pettyId: payload.accountId, date: payload.payDate, desc: vDesc, type: vtype === "in" ? "Cr" : "Dr", amt: payload._add, by: user.name }]);
+      }
+    }
+    upd("pendingApprovals", arr => arr.filter(x => x.id !== a.id));
+  };
+  const handleReject = (a) => upd("pendingApprovals", arr => arr.filter(x => x.id !== a.id));
+
+  const saveRec=(key,item)=>{if(checkApproval(modal.oid?"edit":"add","txn",key,item,modal.oid))return;upd(key,arr=>modal.oid?arr.map(x=>x.id===modal.oid?{...item,id:modal.oid}:x):[...arr,{...item,id:uid()}]);};
+  const delRec=(key,id)=>{if(checkApproval("delete","txn",key,null,id))return;upd(key,arr=>arr.filter(x=>x.id!==id));};
+  const delM=(key,idx)=>{if(checkApproval("delete","master",key,null,idx))return;updM(key,arr=>arr.filter((_,i)=>i!==idx));};
   const openAdd=(mod,extra)=>{
     const docNums={
       sales:{field:"inv",prefix:"INV",arr:data.sales},
@@ -382,7 +415,7 @@ function Main({user,onLogout,settings,setSettings}){
   const openMEdit=(key,idx)=>{setForm({...masters[key][idx]});setModal({t:"master",key,oidx:idx});};
   const saveTxn=key=>{saveRec(key,form);setModal(null);setForm({});};
   const doDelete=()=>{if(del.isM)delM(del.key,del.idx);else delRec(del.key,del.id);setDel(null);};
-  const saveM=(key,item)=>updM(key,arr=>modal.oidx!=null?arr.map((x,i)=>i===modal.oidx?{...item,id:x.id}:x):[...arr,{...item,id:uid()}]);
+  const saveM=(key,item)=>{if(checkApproval(modal.oidx!=null?"edit":"add","master",key,item,modal.oidx))return;updM(key,arr=>modal.oidx!=null?arr.map((x,i)=>i===modal.oidx?{...item,id:x.id}:x):[...arr,{...item,id:uid()}]);};
 
   const fData=useMemo(()=>{if(site==="ALL")return data;const f={};["sales","saleOrders","purchases","purchaseOrders","expenses","payroll","attendance","dpr","materialReceipts","estimates","proforma","debitNotes","creditNotes"].forEach(k=>{f[k]=(data[k]||[]).filter(x=>!x.siteId||x.siteId===site);});return{...data,...f};},[data,site]);
   const rData=useMemo(()=>{const filt=(arr,dk="date")=>(arr||[]).filter(x=>inPeriod(x[dk],rpFrom,rpTo));return{sales:filt(fData.sales),purchases:filt(fData.purchases),expenses:filt(fData.expenses),payroll:filt(fData.payroll,"month"),vouchers:filt(data.vouchers),bankTxns:filt(data.bankTxns),pettyTxns:filt(data.pettyTxns),debitNotes:filt(fData.debitNotes||[]),creditNotes:filt(fData.creditNotes||[])};},[fData,data,rpFrom,rpTo]);
@@ -393,7 +426,18 @@ function Main({user,onLogout,settings,setSettings}){
   const pcName=id=>(masters.pettyCash.find(p=>p.id===id)||{}).name||id||"—";
 
   const openRcv=(key,item)=>{const tot=key==="sales"||key==="debitNotes"?cS(item).net:key==="purchases"||key==="creditNotes"?cP(item).tot:key==="payroll"?cW(item).net:(item.amt||0);setForm({...item,_tot:tot,_bal:Math.max(0,tot-(item.paidAmt||0)),payAdd:"",via:"bank",accountId:(masters.banks[0]||{}).id||"",payDate:new Date().toISOString().slice(0,10),payRef:""});setModal({t:"rcv",key,oid:item.id,isSale:["sales","debitNotes"].includes(key)});};
-  const saveRcvPay=()=>{const add=Number(form.payAdd)||0;if(add<=0)return;upd(modal.key,arr=>arr.map(x=>x.id===modal.oid?{...x,paidAmt:Math.min((x.paidAmt||0)+add,999999999)}:x));const vtype=modal.isSale?"in":"out";const vDesc=(modal.isSale?"Receipt ":"Payment ")+(form.inv||form.dnNo||form.cnNo||form.desc||"");const nV={id:uid(),date:form.payDate,vtype,party:form.client||form.vendor||"",partyType:modal.isSale?"client":"vendor",siteId:form.siteId||"",amt:add,via:form.via,accountId:form.accountId,desc:vDesc,ref:form.payRef||""};upd("vouchers",arr=>[...arr,nV]);if(form.via==="bank"&&form.accountId)upd("bankTxns",arr=>[...arr,{id:uid(),bankId:form.accountId,date:form.payDate,desc:vDesc,type:vtype==="in"?"Cr":"Dr",amt:add,ref:form.payRef||""}]);else if(form.via==="petty"&&form.accountId)upd("pettyTxns",arr=>[...arr,{id:uid(),pettyId:form.accountId,date:form.payDate,desc:vDesc,type:vtype==="in"?"Cr":"Dr",amt:add,by:user.name}]);setModal(null);setForm({});};
+  const saveRcvPay=()=>{
+    const add=Number(form.payAdd)||0;if(add<=0)return;
+    if(checkApproval("receive_pay", "txn", modal.key, {...form, _add:add, _isSale:modal.isSale, _oid:modal.oid}, modal.oid)) { setModal(null); setForm({}); return; }
+    upd(modal.key,arr=>arr.map(x=>x.id===modal.oid?{...x,paidAmt:Math.min((x.paidAmt||0)+add,999999999)}:x));
+    const vtype=modal.isSale?"in":"out";
+    const vDesc=(modal.isSale?"Receipt ":"Payment ")+(form.inv||form.dnNo||form.cnNo||form.desc||"");
+    const nV={id:uid(),date:form.payDate,vtype,party:form.client||form.vendor||"",partyType:modal.isSale?"client":"vendor",siteId:form.siteId||"",amt:add,via:form.via,accountId:form.accountId,desc:vDesc,ref:form.payRef||""};
+    upd("vouchers",arr=>[...arr,nV]);
+    if(form.via==="bank"&&form.accountId)upd("bankTxns",arr=>[...arr,{id:uid(),bankId:form.accountId,date:form.payDate,desc:vDesc,type:vtype==="in"?"Cr":"Dr",amt:add,ref:form.payRef||""}]);
+    else if(form.via==="petty"&&form.accountId)upd("pettyTxns",arr=>[...arr,{id:uid(),pettyId:form.accountId,date:form.payDate,desc:vDesc,type:vtype==="in"?"Cr":"Dr",amt:add,by:user.name}]);
+    setModal(null);setForm({});
+  };
 
   const autoFill=name=>{const mo=form.month||"2025-02";const att=(data.attendance||[]).filter(a=>a.name===name&&(a.date||"").startsWith(mo));sf("present",att.filter(a=>a.present).length);sf("days",att.length||26);};
 
@@ -507,7 +551,7 @@ function Main({user,onLogout,settings,setSettings}){
   const pettyOpts=masters.pettyCash.map(p=>({v:p.id,l:p.name}));
   const gOpts=[0,5,12,18,28];
   const TABS=MOD_GROUPS.filter(t=>can(t.id));
-  const MTABS=[{k:"sites",l:"Sites"},{k:"clients",l:"Clients"},{k:"vendors",l:"Vendors"},{k:"items",l:"Items"},{k:"services",l:"Services"},{k:"labours",l:"Labour"},{k:"machinery",l:"Machinery"},{k:"banks",l:"Banks"},{k:"pettyCash",l:"Petty Cash"},{k:"godowns",l:"Godowns"},{k:"users",l:"Users"},{k:"expenseCats",l:"Exp.Cats"},{k:"company",l:"Company"}];
+  const MTABS=[{k:"sites",l:"Sites"},{k:"clients",l:"Clients"},{k:"vendors",l:"Vendors"},{k:"items",l:"Items"},{k:"services",l:"Services"},{k:"labours",l:"HR"},{k:"machinery",l:"Machinery"},{k:"banks",l:"Banks"},{k:"pettyCash",l:"Petty Cash"},{k:"godowns",l:"Godowns"},{k:"users",l:"Users"},{k:"expenseCats",l:"Exp.Cats"},{k:"company",l:"Company"}];
   const curTab=TABS.find(t=>t.id===tab)||TABS[0]||{};
 
   /* Print handlers for reports */
@@ -573,6 +617,28 @@ function Main({user,onLogout,settings,setSettings}){
 
         {/* ══ DASHBOARD ══ */}
         {tab==="dash"&&<div>
+          {isApprover && (data.pendingApprovals||[]).length > 0 && <div style={{...ss.card, padding: 14, marginBottom: 14, border: "1px solid "+C.or}}>
+            <div style={{color:C.or, fontWeight:700, fontSize:14, marginBottom: 10}}>Pending Approvals ({(data.pendingApprovals||[]).length})</div>
+            <table style={{width:"100%", borderCollapse:"collapse", color:C.rd}}>
+              <thead><tr>{["Requested By","Module","Action","Details","Action"].map(h=><th key={h} style={{...ss.th, padding:"8px", fontSize:11}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {(data.pendingApprovals||[]).map(a => (
+                  <tr key={a.id} style={{borderBottom: BD}}>
+                    <td style={{...ss.td, padding:"8px", fontSize:11}}>{a.requestedBy}</td>
+                    <td style={{...ss.td, padding:"8px", fontSize:11}}>{a.targetKey}</td>
+                    <td style={{...ss.td, padding:"8px", fontSize:11}}><Tag c={a.action==="delete"?"r":a.action==="edit"?"o":"g"} ch={a.action.toUpperCase()}/></td>
+                    <td style={{...ss.td, padding:"8px", fontSize:11, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{a.action==="delete"?"DELETE":(a.payload?JSON.stringify(a.payload).substring(0,60)+"...":"-")}</td>
+                    <td style={{...ss.td, padding:"8px", fontSize:11}}>
+                      <div style={{display:"flex", gap:4}}>
+                        <Btn sm onClick={()=>handleApprove(a)}>Approve</Btn>
+                        <Btn sm color={C.rd} onClick={()=>handleReject(a)}>Reject</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>}
           {showKPIs && <div style={{marginBottom:14}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
               <KCard icon="💰" label="Revenue" value={INR(k.tB)} sub={"GST "+INR(k.tG)} color={C.tl}/>
@@ -784,7 +850,7 @@ function Main({user,onLogout,settings,setSettings}){
 
         {/* ══ HR ══ */}
         {tab==="hr"&&<div>
-          <SubTabs val={hrSub} onChange={setHrSub} tabs={[{v:"att",l:"Attendance",icon:"✅"},{v:"pay",l:"Payroll",icon:"💼"},{v:"wc",l:"Workmen Comp.",icon:"🛡"},{v:"payslip",l:"Pay Slips",icon:"📄"}]}/>
+          <SubTabs val={hrSub} onChange={setHrSub} tabs={[{v:"att",l:"Attendance",icon:"✅"},{v:"pay",l:"Payroll",icon:"💼"},{v:"wc",l:"Workmen Comp.",icon:"🛡"},{v:"payslip",l:"Pay Slips",icon:"📄"},{v:"gate",l:"Gate Register",icon:"🚪"}]}/>
           {hrSub==="att"&&<div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
               <KCard icon="✅" label="Present" value={(fData.attendance||[]).filter(a=>a.present).length} color={C.gn}/><KCard icon="❌" label="Absent" value={(fData.attendance||[]).filter(a=>!a.present).length} color={C.rd}/><KCard icon="⏰" label="OT Hours" value={(fData.attendance||[]).reduce((a,b)=>a+(b.ot||0),0)+"h"} color={C.or}/>
@@ -817,6 +883,29 @@ function Main({user,onLogout,settings,setSettings}){
               <div style={{display:"flex",alignItems:"flex-end",paddingBottom:8}}><Btn full onClick={()=>{const emp=masters.labours.find(l=>l.name===form.psEmp);if(!emp)return alert("Select employee");const pr=(data.payroll||[]).find(p=>p.name===form.psEmp&&p.month===(form.psMonth||""));const pd=pr||{name:form.psEmp,role:emp.role,basic:emp.wage*26,present:26,days:26,month:form.psMonth};const p=cW(pd);const nr=v=>Number(v||0).toLocaleString("en-IN");const buildSlip=(no)=>"<div style='border:1px solid #ccc;padding:16px;font-size:11px;font-family:Arial,sans-serif;margin-bottom:"+(no===1?"4px":"0")+"'><div style='display:flex;justify-content:space-between;border-bottom:2px solid #060C1A;padding-bottom:8px;margin-bottom:10px'><div><div style='font-weight:800;font-size:14px'>"+(co.name||"")+"</div><div style='color:#64748b;font-size:10px'>"+(co.addr||"")+"</div></div><div style='text-align:right'><div style='font-weight:700;font-size:12px;color:#F59E0B'>PAY SLIP</div><div style='font-size:10px;color:#64748b'>"+(form.psMonth||pd.month)+"</div></div></div><table style='width:100%;border-collapse:collapse;font-size:10px'><thead><tr><th style='background:#060C1A;color:#F59E0B;padding:5px 8px;text-align:left'>Earnings</th><th style='background:#060C1A;color:#F59E0B;padding:5px 8px;text-align:right'>Amount</th><th style='background:#060C1A;color:#F87171;padding:5px 8px;text-align:left'>Deductions</th><th style='background:#060C1A;color:#F87171;padding:5px 8px;text-align:right'>Amount</th></tr></thead><tbody><tr><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>Basic Earned</td><td style='padding:4px 8px;text-align:right'>"+nr(p.e)+"</td><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>PF 12%</td><td style='padding:4px 8px;text-align:right'>"+nr(p.pf)+"</td></tr><tr><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>HRA 40%</td><td style='padding:4px 8px;text-align:right'>"+nr(p.h)+"</td><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>ESI 0.75%</td><td style='padding:4px 8px;text-align:right'>"+nr(p.esi)+"</td></tr><tr><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>Gross</td><td style='padding:4px 8px;text-align:right;font-weight:600'>"+nr(p.gr)+"</td><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>Prof Tax + LWF</td><td style='padding:4px 8px;text-align:right'>"+nr(p.pt+(p.lwf||25))+"</td></tr><tr><td colspan=2 style='padding:4px 8px'></td><td style='padding:4px 8px;border-bottom:1px solid #f1f5f9'>TDS</td><td style='padding:4px 8px;text-align:right'>"+nr(p.tds)+"</td></tr><tr style='background:#f8fafc;font-weight:700'><td style='padding:5px 8px'>NET PAYABLE</td><td style='padding:5px 8px;text-align:right;color:#34D399'>"+nr(p.net)+"</td><td style='padding:5px 8px'>Total Deductions</td><td style='padding:5px 8px;text-align:right;color:#F87171'>"+nr(p.ded)+"</td></tr></tbody></table><div style='display:flex;justify-content:space-between;margin-top:12px;font-size:10px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:8px'><span>Employee: "+pd.name+" | Designation: "+pd.role+"</span><span>Sign: ________________</span></div></div>";const fullHtml="<!DOCTYPE html><html><head><meta charset=utf-8><title>Pay Slip</title><style>body{font-family:Arial,sans-serif;margin:20px;padding:0}@media print{body{margin:0}}</style></head><body>"+buildSlip(1)+"<hr style='border:1px dashed #ccc;margin:8px 0'>"+buildSlip(2)+"<div style='text-align:center;padding:12px;margin-top:8px'><button onclick='window.print()' style='background:#F59E0B;color:#000;border:none;padding:8px 24px;border-radius:6px;font-weight:700;cursor:pointer'>Print Pay Slip (2 per page)</button></div></body></html>";try{const blob=new Blob([fullHtml],{type:"text/html"});const url=URL.createObjectURL(blob);window.open(url,"_blank","width=720,height=640");}catch(e){console.error(e);}}} color={C.pu}>🖨 Generate Pay Slip</Btn></div>
             </div>
             {form.psEmp&&(()=>{const pr=(data.payroll||[]).filter(p=>p.name===form.psEmp);return pr.length>0&&<div style={{...ss.card,padding:14,marginTop:8}}><div style={{color:C.or,fontWeight:700,marginBottom:8,fontSize:11}}>Payroll History — {form.psEmp}</div>{pr.map((p,i)=>{const cw=cW(p);return<div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0A1223",fontSize:11}}><span style={{color:C.si}}>{p.month}</span><span>{p.present}/{p.days} days</span><span style={{color:C.tl}}>Net: {INR(cw.net)}</span><Tag c={pSt(p.paidAmt||0,cw.net)==="Paid"?"g":"r"} ch={pSt(p.paidAmt||0,cw.net)}/></div>;})}  </div>;})()}
+          </div>}
+
+          {hrSub==="gate"&&<div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
+              <Btn onClick={()=>openAdd("gateRegister")} color={C.or} icon="➕">New Gate Entry</Btn>
+            </div>
+            <Tbl cols={["Date","Type","Name","Mobile","Purpose","Whom to Visit","Time In","Time Out","Action"]}
+              rows={(data.gateRegister||[]).map(r=>[
+                r.date,
+                <Tag key="t" c={r.type==="Visitor"?"p":"b"} ch={r.type}/>,
+                <b key="n">{r.name}</b>,
+                r.mobile||"—",
+                r.purpose||"—",
+                r.whomToVisit||"—",
+                r.timeIn||"—",
+                <span key="out" style={{color:r.timeOut?C.gn:C.or}}>{r.timeOut||"Pending"}</span>,
+                !r.timeOut ? <button key="m" onClick={()=>{
+                  upd("gateRegister", arr=>arr.map(x=>x.id===r.id?{...x,timeOut:new Date().toLocaleTimeString('en-US',{hour12:false,hour:"2-digit",minute:"2-digit"}), status:"Out"}:x));
+                }} style={{padding:"4px 8px",borderRadius:5,border:"1px solid "+C.or,background:"transparent",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace"}}>Mark Out</button> : "Done"
+              ])}
+              onEdit={i=>openEdit("gateRegister",data.gateRegister[i])} 
+              onDel={i=>setDel({key:"gateRegister",id:data.gateRegister[i].id,label:data.gateRegister[i].name})} 
+              csvName="gate_register"/>
           </div>}
         </div>}
 
@@ -1757,6 +1846,41 @@ function Main({user,onLogout,settings,setSettings}){
           <Btn full onClick={()=>saveTxn("attendance")}>Save Attendance</Btn>
         </div>}
 
+        {/* GATE REGISTER */}
+        {mod==="gateRegister"&&<div>
+          <F label="Entry Type"><Sel val={form.type||"Visitor"} onChange={v=>sf("type",v)} opts={["Visitor","Employee"]}/></F>
+          {form.type==="Employee" ? (
+            <F label="Select Employee"><Sel val={form.name||""} onChange={v=>sf("name",v)} opts={[{v:"",l:"Select HR Person"},...masters.labours.map(l=>l.name)]}/></F>
+          ) : (
+            <F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F>
+          )}
+          {form.type!=="Employee" && <GR cols="1fr 1fr">
+            <F label="Address"><Inp val={form.address||""} onChange={v=>sf("address",v)}/></F>
+            <F label="Mobile No."><Inp val={form.mobile||""} onChange={v=>sf("mobile",v)}/></F>
+          </GR>}
+          {form.type!=="Employee" && <GR cols="1fr 1fr">
+            <F label="Purpose"><Inp val={form.purpose||""} onChange={v=>sf("purpose",v)}/></F>
+            <F label="Whom to Visit"><Inp val={form.whomToVisit||""} onChange={v=>sf("whomToVisit",v)}/></F>
+          </GR>}
+          <GR cols="1fr 1fr">
+            <F label="Date"><Inp type="date" val={form.date||new Date().toISOString().slice(0,10)} onChange={v=>sf("date",v)}/></F>
+            <F label="Time In"><Inp type="time" val={form.timeIn||new Date().toLocaleTimeString('en-US',{hour12:false,hour:"2-digit",minute:"2-digit"})} onChange={v=>sf("timeIn",v)}/></F>
+          </GR>
+          {modal.oid && <F label="Time Out (Optional)"><Inp type="time" val={form.timeOut||""} onChange={v=>sf("timeOut",v)}/></F>}
+          <Btn full onClick={()=>{
+            if(!form.name) return alert("Enter name");
+            const date = form.date || new Date().toISOString().slice(0,10);
+            if(form.type === "Employee") {
+              const emp = masters.labours.find(l=>l.name===form.name);
+              if(emp) {
+                 const existAtt = (data.attendance||[]).find(a=>a.name===form.name && a.date===date);
+                 if(!existAtt) upd("attendance", arr=>[...arr, {id:uid(), date, siteId:emp.siteId, name:emp.name, role:emp.role, present:true, status:"present", ot:0}]);
+              }
+            }
+            saveTxn("gateRegister");
+          }}>Save Entry</Btn>
+        </div>}
+
         {/* VOUCHER */}
         {mod==="vouchers"&&<div>
           <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date||""} onChange={v=>sf("date",v)} type="date"/></F><F label="Voucher Flow"><div style={{display:"flex",gap:5,marginBottom:8}}>{[{v:"in",l:"💚 Money In",c:C.gn},{v:"out",l:"🔴 Money Out",c:C.rd}].map(o=><button key={o.v} onClick={()=>sf("vtype",o.v)} style={{flex:1,padding:"7px",borderRadius:7,border:"1px solid "+(form.vtype===o.v?o.c:"#1E2D45"),background:form.vtype===o.v?G(o.c,0.15):"#060C1A",color:form.vtype===o.v?o.c:C.gr,cursor:"pointer",fontFamily:"monospace",fontSize:11,fontWeight:form.vtype===o.v?700:400}}>{o.l}</button>)}</div></F></GR>
@@ -1919,7 +2043,17 @@ function Main({user,onLogout,settings,setSettings}){
     {modal&&modal.t==="master"&&<Modal title={(modal.oidx!=null?"EDIT — ":"ADD — ")+modal.key.toUpperCase()} onClose={()=>setModal(null)}>
       {modal.key==="sites"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Client"><Inp val={form.client||""} onChange={v=>sf("client",v)}/></F><F label="Location"><Inp val={form.loc||""} onChange={v=>sf("loc",v)}/></F><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Completed","On Hold"]}/></F><Btn full onClick={()=>{saveM("sites",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="clients"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Contact Person"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F><F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F><F label="Bill To Address"><Inp val={form.billTo||""} onChange={v=>sf("billTo",v)} placeholder="Registered / billing address"/></F><F label="Ship To Address"><Inp val={form.shipTo||""} onChange={v=>sf("shipTo",v)} placeholder="Site / delivery address"/></F><Btn full onClick={()=>{saveM("clients",form);setModal(null);}}>Save</Btn></div>}
-      {modal.key==="vendors"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Contact"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F><F label="Category"><Inp val={form.cat||""} onChange={v=>sf("cat",v)}/></F><F label="GST"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F><F label="Payment Terms"><Inp val={form.terms||""} onChange={v=>sf("terms",v)}/></F><Btn full onClick={()=>{saveM("vendors",form);setModal(null);}}>Save</Btn></div>}
+      {modal.key==="vendors"&&<div>
+        <GR cols="1fr 1fr"><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Category"><Sel val={form.cat||""} onChange={v=>sf("cat",v)} opts={["Select","Sub-Contractor","Equipment Vendor","Material Supplier","Service Provider","Consultant","Other"]}/></F></GR>
+        <GR cols="1fr 1fr"><F label="Sub-Category (Products/Services)"><Inp val={form.subCat||""} onChange={v=>sf("subCat",v)}/></F><F label="Payment Terms"><Sel val={form.terms||""} onChange={v=>sf("terms",v)} opts={["Select","Advance","Credit 15 Days","Credit 30 Days","Credit 45 Days","Credit 60 Days","Credit 90 Days"]}/></F></GR>
+        <GR cols="1fr 1fr"><F label="Contact Person"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F></GR>
+        <GR cols="1fr 1fr"><F label="Email"><Inp val={form.email||""} onChange={v=>sf("email",v)}/></F><F label="Address"><Inp val={form.address||""} onChange={v=>sf("address",v)}/></F></GR>
+        <GR cols="1fr 1fr 1fr"><F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F><F label="TDS Applicable"><Sel val={form.tdsApp?"yes":"no"} onChange={v=>sf("tdsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F><F label="TCS Applicable"><Sel val={form.tcsApp?"yes":"no"} onChange={v=>sf("tcsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F></GR>
+        <div style={{color:C.or,fontSize:10,marginTop:6,marginBottom:6,fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Banking Details</div>
+        <GR cols="1fr 1fr"><F label="Bank Name"><Inp val={form.bankName||""} onChange={v=>sf("bankName",v)}/></F><F label="Account No"><Inp val={form.bankAccount||""} onChange={v=>sf("bankAccount",v)}/></F></GR>
+        <F label="IFSC Code"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F>
+        <Btn full onClick={()=>{saveM("vendors",form);setModal(null);}}>Save Vendor</Btn>
+      </div>}
       {modal.key==="items"&&<div><F label="Item Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Unit"><Inp val={form.unit||""} onChange={v=>sf("unit",v)}/></F><F label="Category"><Inp val={form.cat||""} onChange={v=>sf("cat",v)}/></F><F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="8-digit HSN code"/></F><F label="Standard Rate"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F><Btn full onClick={()=>{saveM("items",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="services"&&<div><F label="Service Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Unit"><Inp val={form.unit||""} onChange={v=>sf("unit",v)}/></F><F label="Category"><Inp val={form.cat||""} onChange={v=>sf("cat",v)}/></F><F label="SAC Code"><Inp val={form.sac||""} onChange={v=>sf("sac",v)} placeholder="6-digit SAC code"/></F><F label="Standard Rate"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F><F label="GST %"><Sel val={form.gst||18} onChange={v=>sf("gst",+v)} opts={gOpts}/></F><Btn full onClick={()=>{saveM("services",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="labours"&&<div>
@@ -1927,10 +2061,14 @@ function Main({user,onLogout,settings,setSettings}){
           {form.photo?<div style={{position:"relative"}}><img src={form.photo} style={{width:80,height:80,objectFit:"cover",borderRadius:8,border:"2px solid "+C.or}}/><button onClick={()=>sf("photo","")} style={{position:"absolute",top:-4,right:-4,background:C.rd,border:"none",borderRadius:"50%",width:18,height:18,color:"white",cursor:"pointer",fontSize:11}}>x</button></div>:<button onClick={()=>pickImage(url=>sf("photo",url))} style={{width:80,height:80,borderRadius:8,border:"2px dashed "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}><span style={{fontSize:22}}>👤</span>Photo</button>}
         </div><div>
           <F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F>
-          <F label="Role"><Inp val={form.role||""} onChange={v=>sf("role",v)}/></F>
+          <F label="Role"><Sel val={form.role||""} onChange={v=>sf("role",v)} opts={["Select","Labour","Site Helper","Mason","Carpenter","Fitter","Welder","Painter","Driver","Operator","Security","Site Supervisor","Site Accountant","Site Manager","Office Boy","Office Helper","Office Accountant","Clerk","Executive","Manager","Admin","Owner"]}/></F>
         </div></GR>
+        <GR cols="1fr 1fr"><F label="DOB"><Inp type="date" val={form.dob||""} onChange={v=>sf("dob",v)}/></F><F label="Email ID"><Inp val={form.email||""} onChange={v=>sf("email",v)}/></F></GR>
         <GR cols="1fr 1fr"><F label="Site"><Sel val={form.siteId||""} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F></GR>
+        <F label="Address"><Inp val={form.address||""} onChange={v=>sf("address",v)}/></F>
         <GR cols="1fr 1fr"><F label="Daily Wage"><Num val={form.wage} onChange={v=>sf("wage",v)}/></F><F label="PF Applicable"><Sel val={form.pf?"yes":"no"} onChange={v=>sf("pf",v==="yes")} opts={[{v:"yes",l:"Yes"},{v:"no",l:"No"}]}/></F></GR>
+        <GR cols="1fr 1fr"><F label="UAN No."><Inp val={form.uan||""} onChange={v=>sf("uan",v)}/></F><F label="Bank Name"><Inp val={form.bankName||""} onChange={v=>sf("bankName",v)}/></F></GR>
+        <GR cols="1fr 1fr"><F label="Bank Account No."><Inp val={form.bankAccount||""} onChange={v=>sf("bankAccount",v)}/></F><F label="IFSC Code"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F></GR>
         <F label="Aadhar / PAN No"><Inp val={form.kyc||""} onChange={v=>sf("kyc",v)} placeholder="XXXX-XXXX-XXXX / ABCDE1234F"/></F>
         <F label="KYC Documents (Aadhar / PAN photos)">
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
@@ -1941,20 +2079,56 @@ function Main({user,onLogout,settings,setSettings}){
             {(form.kycDocs||[]).length<3&&<button onClick={()=>pickImage(url=>sf("kycDocs",[...(form.kycDocs||[]),url]))} style={{width:80,height:60,borderRadius:5,border:"2px dashed "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}><span style={{fontSize:18}}>🪪</span>Add Doc</button>}
           </div>
         </F>
-        <Btn full onClick={()=>{saveM("labours",form);setModal(null);}}>Save Labour</Btn>
+        <Btn full onClick={()=>{
+          if(!form.dob) { alert("Please provide DOB."); return; }
+          const dobD=new Date(form.dob); const today=new Date(); let age=today.getFullYear()-dobD.getFullYear();
+          const m=today.getMonth()-dobD.getMonth(); if(m<0||(m===0&&today.getDate()<dobD.getDate())) age--;
+          if(age<18) { alert("Age must be at least 18 years to be added."); return; }
+          saveM("labours",form);setModal(null);
+        }}>Save HR Person</Btn>
       </div>}
       {modal.key==="machinery"&&<div><F label="Machine Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Type"><Inp val={form.type||""} onChange={v=>sf("type",v)}/></F><F label="Ownership"><Sel val={form.owner||"Owned"} onChange={v=>sf("owner",v)} opts={["Owned","Hired","Leased"]}/></F><F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="Machinery HSN"/></F><F label="Reg No"><Inp val={form.reg||""} onChange={v=>sf("reg",v)}/></F><F label="Rate per Day"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F><GR cols="1fr 1fr"><F label="Location Type"><Sel val={form.locType||"site"} onChange={v=>sf("locType",v)} opts={[{v:"site",l:"Site"},{v:"godown",l:"Godown"}]}/></F><F label="Location"><Sel val={form.locId||""} onChange={v=>sf("locId",v)} opts={form.locType==="site"?masters.sites.map(s=>({v:s.id,l:s.name})):masters.godowns.map(g=>({v:g.id,l:g.name}))}/></F></GR><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Maintenance","Retired"]}/></F><Btn full onClick={()=>{saveM("machinery",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="banks"&&<div><F label="Bank Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Account No"><Inp val={form.accNo||""} onChange={v=>sf("accNo",v)}/></F><GR cols="1fr 1fr"><F label="IFSC"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F><F label="Branch"><Inp val={form.branch||""} onChange={v=>sf("branch",v)}/></F></GR><F label="Opening Balance"><Num val={form.openBal} onChange={v=>sf("openBal",v)}/></F><Btn full onClick={()=>{saveM("banks",form);setModal(null);}}>Save Bank</Btn></div>}
       {modal.key==="pettyCash"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Keeper Name"><Inp val={form.keeper||""} onChange={v=>sf("keeper",v)}/></F><F label="Opening Balance"><Num val={form.openBal} onChange={v=>sf("openBal",v)}/></F><Btn full onClick={()=>{saveM("pettyCash",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="godowns"&&<div><F label="Godown Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Location / Address"><Inp val={form.loc||""} onChange={v=>sf("loc",v)}/></F><F label="Keeper / Incharge"><Inp val={form.keeper||""} onChange={v=>sf("keeper",v)}/></F><Btn full onClick={()=>{saveM("godowns",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="users"&&<div>
-        <F label="Full Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F>
+        <F label="Full Name"><Sel val={form.name||""} onChange={v=>sf("name",v)} opts={[{v:"",l:"Select from HR"},...masters.labours.map(l=>l.name)]}/></F>
         <F label="Username"><Inp val={form.username||""} onChange={v=>sf("username",v)}/></F>
         <F label="Password"><input type="password" style={ss.inp} value={form.password||""} onChange={e=>sf("password",e.target.value)}/></F>
         <F label="Role"><Sel val={form.role||"Viewer"} onChange={v=>sf("role",v)} opts={["Admin","Manager","Accountant","Supervisor","Viewer"]}/></F>
-        <F label="Module Access (tick to allow)">
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-            {MOD_GROUPS.map(m=>{const acc=form.moduleAccess||[];const on=acc.includes(m.id);return <button key={m.id} onClick={()=>{const cur=form.moduleAccess||[];sf("moduleAccess",on?cur.filter(x=>x!==m.id):[...cur,m.id]);}} style={{padding:"4px 10px",borderRadius:20,border:"1px solid "+(on?m.color:"#1E2D45"),background:on?G(m.color,0.15):"transparent",color:on?m.color:C.gr,cursor:"pointer",fontFamily:"monospace",fontSize:10,fontWeight:on?700:400}}>{m.icon} {m.l}</button>;})}
+        <F label="Module Access">
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:8}}>
+            {MOD_GROUPS.map(m=>{
+              const accObj=form.moduleAccessObj||{};
+              const myPerms = accObj[m.id]||[];
+              const on=myPerms.length>0;
+              const subOpts = ["View","Create","Edit","Delete","Approve","Reject","Download","Upload"];
+              return <div key={m.id} style={{padding:"8px",borderRadius:8,border:"1px solid "+(on?m.color:"#1E2D45"),background:on?G(m.color,0.05):"transparent"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                  <div style={{color:on?m.color:C.gr,fontWeight:700,fontSize:11}}>{m.icon} {m.l}</div>
+                  <button onClick={()=>{
+                    const nobj = {...accObj};
+                    if(on) delete nobj[m.id];
+                    else nobj[m.id] = ["View"];
+                    sf("moduleAccessObj", nobj);
+                    sf("moduleAccess", Object.keys(nobj));
+                  }} style={{background:"transparent",color:on?C.rd:C.gn,border:"1px solid "+(on?C.rd:C.gn),borderRadius:4,fontSize:9,padding:"2px 6px",cursor:"pointer"}}>{on?"Remove":"Add"}</button>
+                </div>
+                {on && <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
+                  {subOpts.map(so=>{
+                    const has = myPerms.includes(so);
+                    return <button key={so} onClick={()=>{
+                      const nobj = {...accObj};
+                      if(has) nobj[m.id] = myPerms.filter(x=>x!==so);
+                      else nobj[m.id] = [...myPerms, so];
+                      if(nobj[m.id].length===0) delete nobj[m.id];
+                      sf("moduleAccessObj", nobj);
+                      sf("moduleAccess", Object.keys(nobj));
+                    }} style={{padding:"2px 8px",borderRadius:12,border:"1px solid "+(has?m.color:"#1E2D45"),background:has?G(m.color,0.15):"transparent",color:has?m.color:C.gr,cursor:"pointer",fontSize:9}}>{so}</button>;
+                  })}
+                </div>}
+              </div>;
+            })}
           </div>
         </F>
         <Btn full onClick={()=>{saveM("users",form);setModal(null);}}>Save User</Btn>
