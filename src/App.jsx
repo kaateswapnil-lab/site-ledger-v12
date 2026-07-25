@@ -653,6 +653,55 @@ function Main({user,onLogout,settings,setSettings}){
               <KCard icon="⏳" label="Net Receivable" value={INR(k.net)} color={C.pu}/>
             </div>
           </div>}
+          </div>}
+
+          {/* ══ JOB ORDER BUDGET TRACKING ══ */}
+          {fData.jobOrders?.length > 0 && <div style={{...ss.card, padding:14, marginBottom:12, background:"linear-gradient(135deg,#0E1628,#0A1223)"}}>
+            <div style={{color:C.si,fontSize:10,letterSpacing:1,marginBottom:10,textTransform:"uppercase"}}>Job Order Budget Tracking</div>
+            {fData.jobOrders.map(jo => {
+              const so = (data.saleOrders||[]).find(s=>s.id===jo.soId);
+              const totMatB = jo.tasks?.reduce((a,t)=>a+(Number(t.matBudget)||0),0)||0;
+              const totLabB = jo.tasks?.reduce((a,t)=>a+(Number(t.labBudget)||0),0)||0;
+              const totMacB = jo.tasks?.reduce((a,t)=>a+(Number(t.macBudget)||0),0)||0;
+              const actMat = (data.purchases||[]).filter(p=>p.jobOrderId===jo.id).reduce((a,p)=>a+((p.qty||0)*(p.rate||0)*(1+(p.gst||18)/100)),0);
+              const actLab = (data.payroll||[]).filter(p=>p.jobOrderId===jo.id).reduce((a,p)=>a+(cW(p).gr),0);
+              const actMac = (data.expenses||[]).filter(e=>e.jobOrderId===jo.id).reduce((a,e)=>a+(Number(e.amt)||0),0);
+              const mRatio = totMatB ? (actMat/totMatB)*100 : (actMat > 0 ? 100 : 0);
+              const lRatio = totLabB ? (actLab/totLabB)*100 : (actLab > 0 ? 100 : 0);
+              const macRatio = totMacB ? (actMac/totMacB)*100 : (actMac > 0 ? 100 : 0);
+              return (
+                <div key={jo.id} style={{marginBottom:10, paddingBottom:10, borderBottom:"1px solid #1A2840"}}>
+                  <div style={{display:"flex", justifyContent:"space-between", marginBottom:6}}>
+                    <div>
+                      <b style={{color:C.pu}}>{jo.joNo}</b> <span style={{color:C.si, fontSize:10}}>({sName(jo.siteId)})</span>
+                      {so && <div style={{color:C.gr, fontSize:9}}>{so.desc}</div>}
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{color:C.or, fontWeight:700, fontSize:12}}>{INR(totMatB+totLabB+totMacB)} Budget</div>
+                      <div style={{color: (actMat+actLab+actMac) > (totMatB+totLabB+totMacB) ? C.rd : C.gn, fontSize:11}}>
+                        {INR(actMat+actLab+actMac)} Actual
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10}}>
+                    <div>
+                      <div style={{display:"flex", justifyContent:"space-between", fontSize:9, color:C.si}}><span>Material</span><span style={{color:mRatio>100?C.rd:C.si}}>{Math.round(mRatio)}%</span></div>
+                      <div style={{height:4, background:"#060C1A", borderRadius:2, marginTop:2}}><div style={{height:"100%", width:Math.min(mRatio,100)+"%", background:mRatio>100?C.rd:C.tl, borderRadius:2}}/></div>
+                    </div>
+                    <div>
+                      <div style={{display:"flex", justifyContent:"space-between", fontSize:9, color:C.si}}><span>Labour</span><span style={{color:lRatio>100?C.rd:C.si}}>{Math.round(lRatio)}%</span></div>
+                      <div style={{height:4, background:"#060C1A", borderRadius:2, marginTop:2}}><div style={{height:"100%", width:Math.min(lRatio,100)+"%", background:lRatio>100?C.rd:C.pu, borderRadius:2}}/></div>
+                    </div>
+                    <div>
+                      <div style={{display:"flex", justifyContent:"space-between", fontSize:9, color:C.si}}><span>Machinery</span><span style={{color:macRatio>100?C.rd:C.si}}>{Math.round(macRatio)}%</span></div>
+                      <div style={{height:4, background:"#060C1A", borderRadius:2, marginTop:2}}><div style={{height:"100%", width:Math.min(macRatio,100)+"%", background:macRatio>100?C.rd:C.or, borderRadius:2}}/></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>}
+
           <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:12,marginBottom:12}}>
             <MiniCalendar/>
             <div style={{...ss.card,padding:14,background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{color:C.si,fontSize:10,marginBottom:10,letterSpacing:1,textTransform:"uppercase"}}>Financial Year {getFYStr()}</div>{[["Revenue",INR(k.tB),C.tl],["Expenses",INR(k.pB+k.tE),C.rd],["Payroll",INR(k.tP),C.pu],["Profit",INR(k.profit),k.profit>=0?C.gn:C.rd]].map(([l,v,c])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0A1223"}}><span style={{color:C.si,fontSize:11}}>{l}</span><span style={{color:c,fontWeight:700,fontFamily:"monospace"}}>{v}</span></div>)}</div>
@@ -701,9 +750,9 @@ function Main({user,onLogout,settings,setSettings}){
           );})}
         </div>}
 
-        {/* ══ SALES (SO | Invoices | Estimates | Proforma | Debit Notes) ══ */}
+        {/* ══ SALES (SO | Invoices | Estimates | Proforma | Debit Notes | Job Orders) ══ */}
         {tab==="sales"&&<div>
-          <SubTabs val={salesSub} onChange={setSalesSub} tabs={[{v:"so",l:"Sale Orders",icon:"📑"},{v:"inv",l:"Invoices",icon:"🧾"},{v:"est",l:"Estimates",icon:"📝"},{v:"proforma",l:"Proforma",icon:"📄"},{v:"dn",l:"Debit Notes",icon:"⬆"},{v:"otherincome",l:"Other Income",icon:"💹"}]}/>
+          <SubTabs val={salesSub} onChange={setSalesSub} tabs={[{v:"so",l:"Sale Orders",icon:"📑"},{v:"jo",l:"Job Orders",icon:"📋"},{v:"inv",l:"Invoices",icon:"🧾"},{v:"est",l:"Estimates",icon:"📝"},{v:"proforma",l:"Proforma",icon:"📄"},{v:"dn",l:"Debit Notes",icon:"⬆"},{v:"otherincome",l:"Other Income",icon:"💹"}]}/>
           {salesSub==="so"&&<div>
             <div style={{...ss.card,overflowX:"auto"}}>
               <table style={{borderCollapse:"collapse",width:"100%"}}>
@@ -725,6 +774,34 @@ function Main({user,onLogout,settings,setSettings}){
                       <button onClick={()=>{genInv({...r,inv:r.id},co,masters.clients.find(c=>c.name===r.client),{isEstimate:true});}} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>
                       <button onClick={()=>openEdit("so",r)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
                       <button onClick={()=>setDel({key:"saleOrders",id:r.id,label:r.desc})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
+                    </div></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </div>}
+          {salesSub==="jo"&&<div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
+              <Btn onClick={()=>openAdd("jo")} color={C.or} icon="➕">New Job Order</Btn>
+            </div>
+            <div style={{...ss.card,overflowX:"auto"}}>
+              <table style={{borderCollapse:"collapse",width:"100%"}}>
+                <thead><tr style={{background:"#060C1A"}}>{["Date","Job Order No","Sale Order Ref","Site","Total Est. Cost","Tasks","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
+                <tbody>{(fData.jobOrders||[]).length===0?<tr><td colSpan={7} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No Job Orders</td></tr>:(fData.jobOrders||[]).map((r,idx)=>{
+                  const so = (data.saleOrders||[]).find(s=>s.id===r.soId);
+                  const totalMat = (r.tasks||[]).reduce((a,t)=>a+(Number(t.matBudget)||0),0);
+                  const totalLab = (r.tasks||[]).reduce((a,t)=>a+(Number(t.labBudget)||0),0);
+                  const totalMac = (r.tasks||[]).reduce((a,t)=>a+(Number(t.macBudget)||0),0);
+                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                    <td style={ss.td}>{r.date}</td>
+                    <td style={ss.td}><b style={{color:C.pu}}>{r.joNo}</b></td>
+                    <td style={ss.td}>{so ? so.client+" — "+so.desc : "—"}</td>
+                    <td style={ss.td}>{sName(r.siteId)}</td>
+                    <td style={ss.td}><b style={{color:C.or}}>{INR(totalMat+totalLab+totalMac)}</b></td>
+                    <td style={ss.td}>{r.tasks?.length||0} Tasks</td>
+                    <td style={ss.td}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+                      <button onClick={()=>openEdit("jo",r)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
+                      <button onClick={()=>setDel({key:"jobOrders",id:r.id,label:r.joNo})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
                     </div></td>
                   </tr>;
                 })}</tbody>
@@ -1745,6 +1822,50 @@ function Main({user,onLogout,settings,setSettings}){
           <Btn full onClick={()=>{saveRec("saleOrders",{...form,convertedInvs:form.convertedInvs||[]});setModal(null);setForm({});}}>Save Sale Order</Btn>
         </div>}
 
+        {/* JOB ORDER */}
+        {mod==="jo"&&<div>
+          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Job Order No"><Inp val={form.joNo} onChange={v=>sf("joNo",v)} placeholder="JO-001"/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Link Sale Order">
+              <Sel val={form.soId||""} onChange={v=>{
+                sf("soId",v);
+                const so = (data.saleOrders||[]).find(s=>s.id===v);
+                if(so) {
+                  sf("siteId", so.siteId);
+                  sf("client", so.client);
+                  if(!(form.tasks?.length>0)) {
+                    sf("tasks", (so.lineItems||[]).map((li,i)=>({id:uid()+i, name: li.desc || li.item || "Unknown Task", qty: li.qty||1, unit: li.unit||"Nos", phase: "Site Preparation", estStartDate: form.date||new Date().toISOString().slice(0,10), estEndDate: "", matBudget: 0, labBudget: 0, macBudget: 0})));
+                  }
+                }
+              }} opts={[{v:"",l:"Select Sale Order"},...(data.saleOrders||[]).map(s=>({v:s.id,l:s.client+" — "+s.desc}))]}/>
+            </F>
+            <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
+          </GR>
+          {form.tasks && form.tasks.length > 0 && <div style={{...ss.card, padding:10, marginTop:10, overflowX:"auto"}}>
+            <div style={{color:C.or, fontWeight:700, marginBottom:8}}>Task Allocations & Budget</div>
+            <table style={{borderCollapse:"collapse", width:"100%", fontSize:10}}>
+              <thead><tr style={{background:"#060C1A"}}>{["Phase","Task","Start Date","End Date","Mat. Budget","Lab. Budget","Mac. Budget"].map(h=><th key={h} style={{...ss.th, padding:"6px 4px"}}>{h}</th>)}</tr></thead>
+              <tbody>{form.tasks.map((t,i)=><tr key={i}>
+                <td style={{...ss.td, padding:"4px"}}><Sel val={t.phase} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, phase:v}:x))} opts={["Site Preparation","Foundation & Sub-Structure","Super Structure & RCC","Finishing & MEP"]}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Inp val={t.name} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, name:v}:x))}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estStartDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estStartDate:v}:x))}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estEndDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estEndDate:v}:x))}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Num val={t.matBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, matBudget:v}:x))}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Num val={t.labBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, labBudget:v}:x))}/></td>
+                <td style={{...ss.td, padding:"4px"}}><Num val={t.macBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, macBudget:v}:x))}/></td>
+              </tr>)}</tbody>
+            </table>
+            <div style={{marginTop:8, display:"flex", justifyContent:"space-between", background:"#060C1A", padding:"8px", borderRadius:4}}>
+              <span style={{color:C.tl, fontWeight:700}}>Total Mat: {INR(form.tasks.reduce((a,x)=>a+(Number(x.matBudget)||0),0))}</span>
+              <span style={{color:C.pu, fontWeight:700}}>Total Lab: {INR(form.tasks.reduce((a,x)=>a+(Number(x.labBudget)||0),0))}</span>
+              <span style={{color:C.or, fontWeight:700}}>Total Mac: {INR(form.tasks.reduce((a,x)=>a+(Number(x.macBudget)||0),0))}</span>
+            </div>
+          </div>}
+          <div style={{marginTop:12}}>
+            <Btn full onClick={()=>{saveRec("jobOrders",form);setModal(null);setForm({});}}>Save Job Order</Btn>
+          </div>
+        </div>}
+
         {/* ESTIMATE */}
         {mod==="estimate"&&<div>
           <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Estimate No"><Inp val={form.estNo} onChange={v=>sf("estNo",v)} placeholder="EST-002"/></F></GR>
@@ -1798,6 +1919,10 @@ function Main({user,onLogout,settings,setSettings}){
         {/* PURCHASE BILL */}
         {mod==="purch"&&<div>
           <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Job Order"><Sel val={form.jobOrderId||""} onChange={v=>{sf("jobOrderId",v);sf("taskId","");}} opts={[{v:"",l:"None"},...(data.jobOrders||[]).filter(j=>j.siteId===form.siteId).map(j=>({v:j.id,l:j.joNo}))]}/></F>
+            {form.jobOrderId ? <F label="Task"><Sel val={form.taskId||""} onChange={v=>sf("taskId",v)} opts={[{v:"",l:"Select Task"},...((data.jobOrders||[]).find(j=>j.id===form.jobOrderId)?.tasks||[]).map(t=>({v:t.id,l:t.name}))]}/></F> : <div/>}
+          </GR>
           <F label="Vendor"><Sel val={form.vendor||""} onChange={v=>sf("vendor",v)} opts={[{v:"",l:"Select"},...masters.vendors.map(v=>v.name)]}/></F>
           <GR cols="1fr 1fr"><F label="Item"><Sel val={form.item||""} onChange={v=>{sf("item",v);const it=masters.items.find(i=>i.name===v);if(it){sf("unit",it.unit);sf("rate",it.rate);sf("gst",it.gst||18);sf("hsn",it.hsn||"");}}} opts={[{v:"",l:"Select"},...masters.items.map(i=>i.name)]}/></F><F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="HSN / SAC code"/></F></GR>
           <GR cols="1fr 1fr 1fr"><F label="Qty"><Num val={form.qty} onChange={v=>sf("qty",v)}/></F><F label="Unit"><Inp val={form.unit||""} onChange={v=>sf("unit",v)}/></F><F label="Rate"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F></GR>
@@ -1812,6 +1937,10 @@ function Main({user,onLogout,settings,setSettings}){
         {/* EXPENSE */}
         {mod==="exp"&&<div>
           <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Job Order"><Sel val={form.jobOrderId||""} onChange={v=>{sf("jobOrderId",v);sf("taskId","");}} opts={[{v:"",l:"None"},...(data.jobOrders||[]).filter(j=>j.siteId===form.siteId).map(j=>({v:j.id,l:j.joNo}))]}/></F>
+            {form.jobOrderId ? <F label="Task"><Sel val={form.taskId||""} onChange={v=>sf("taskId",v)} opts={[{v:"",l:"Select Task"},...((data.jobOrders||[]).find(j=>j.id===form.jobOrderId)?.tasks||[]).map(t=>({v:t.id,l:t.name}))]}/></F> : <div/>}
+          </GR>
           <GR cols="1fr 1fr"><F label="Category"><Sel val={form.cat||""} onChange={v=>sf("cat",v)} opts={[{v:"",l:"Select"},...(masters.expenseCats||[])]}/></F><F label="HSN/SAC (optional)"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="—"/></F></GR>
           <F label="Description"><Inp val={form.desc||""} onChange={v=>sf("desc",v)}/></F>
           <F label="Amount"><Num val={form.amt} onChange={v=>sf("amt",v)}/></F>
@@ -1832,6 +1961,10 @@ function Main({user,onLogout,settings,setSettings}){
         {/* PAYROLL */}
         {mod==="pay"&&<div>
           <GR cols="1fr 1fr"><F label="Month"><Inp val={form.month||""} onChange={v=>sf("month",v)} type="month"/></F><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Job Order"><Sel val={form.jobOrderId||""} onChange={v=>{sf("jobOrderId",v);sf("taskId","");}} opts={[{v:"",l:"None"},...(data.jobOrders||[]).filter(j=>j.siteId===form.siteId).map(j=>({v:j.id,l:j.joNo}))]}/></F>
+            {form.jobOrderId ? <F label="Task"><Sel val={form.taskId||""} onChange={v=>sf("taskId",v)} opts={[{v:"",l:"Select Task"},...((data.jobOrders||[]).find(j=>j.id===form.jobOrderId)?.tasks||[]).map(t=>({v:t.id,l:t.name}))]}/></F> : <div/>}
+          </GR>
           <GR cols="1fr 1fr"><F label="Employee"><Sel val={form.name||""} onChange={v=>{sf("name",v);autoFill(v);const lb=masters.labours.find(l=>l.name===v);if(lb)sf("role",lb.role);}} opts={[{v:"",l:"Select"},...masters.labours.map(l=>l.name)]}/></F><F label="Role"><Inp val={form.role||""} onChange={v=>sf("role",v)}/></F></GR>
           <GR cols="1fr 1fr 1fr"><F label="Working Days"><Num val={form.days} onChange={v=>sf("days",v)}/></F><F label="Days Present"><Num val={form.present} onChange={v=>sf("present",v)}/></F><F label="Basic Salary"><Num val={form.basic} onChange={v=>sf("basic",v)}/></F></GR>
           {form.basic>0&&<div style={{background:G(C.pu,0.07),borderRadius:7,padding:"10px 12px",marginBottom:8,border:"1px solid "+G(C.pu,0.2)}}>{(()=>{const p=cW(form);return[["Earned Basic",INR(p.e),"#E2E8F0"],["HRA 40%",INR(p.h),C.pu],["Gross",INR(p.gr),C.or],["PF 12%","–"+INR(p.pf),C.rd],["ESI 0.75%","–"+INR(p.esi),C.rd],["Prof Tax","–"+INR(p.pt),C.rd],["LWF","–"+INR(p.lwf||25),C.rd],["TDS","–"+INR(p.tds),C.rd],["NET PAY",INR(p.net),C.tl]].map(([l,v,c],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:i===6?"1px solid "+G(C.pu,0.2):"none"}}><span style={{color:C.si}}>{l}</span><span style={{color:c,fontWeight:i===7?700:400,fontFamily:"monospace"}}>{v}</span></div>);})()}</div>}
