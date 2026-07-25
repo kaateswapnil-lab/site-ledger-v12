@@ -474,6 +474,9 @@ function Main({user,onLogout,settings,setSettings}){
 
   /* SO progress for DPR */
   const getSoProgress=soId=>{if(!soId)return[];const so=(data.saleOrders||[]).find(s=>s.id===soId);if(!so)return[];const allInvs=(data.sales||[]).filter(s=>s.soId===soId);return(so.lineItems||[]).map((li,idx)=>{const completed=(data.dpr||[]).filter(d=>d.soId===soId).reduce((a,d)=>{const e=(d.entries||[]).find(en=>en.soLineIdx===idx);return a+(e?e.completedQty:0);},0);const prevBilled=allInvs.reduce((a,inv)=>{const il=inv.lineItems&&inv.lineItems[idx];return a+(il?il.qty:0);},0);return{desc:li.desc,unit:li.unit,estimated:li.qty,completed:Math.round(completed*100)/100,prevBilled,thisBill:0,balance:Math.max(0,li.qty-prevBilled)};});};
+  
+  /* JO progress for DPR */
+  const getJoProgress=joId=>{if(!joId)return[];const jo=(data.jobOrders||[]).find(j=>j.id===joId);if(!jo)return[];return(jo.tasks||[]).map(t=>{const completed=(data.dpr||[]).filter(d=>d.jobOrderId===joId).reduce((a,d)=>{const e=(d.entries||[]).find(en=>en.taskId===t.id);return a+(e?e.completedQty:0);},0);return{desc:t.name,unit:t.unit,estimated:t.qty,completed:Math.round(completed*100)/100,balance:Math.max(0,t.qty-completed)};});};
 
   /* KPIs */
   const k=useMemo(()=>{const s=fData.sales||[],pu=fData.purchases||[],ex=fData.expenses||[],py=fData.payroll||[];const dn=fData.debitNotes||[],cn=fData.creditNotes||[];const tB=s.reduce((a,b)=>a+cS(b).basic,0)+dn.reduce((a,b)=>a+cS(b).basic,0),tG=s.reduce((a,b)=>a+cS(b).g,0),tTDS=s.reduce((a,b)=>a+cS(b).td,0);const pB=pu.reduce((a,b)=>a+cP(b).b,0),pG=pu.reduce((a,b)=>a+cP(b).ga,0);const tE=ex.reduce((a,b)=>a+b.amt,0),tP=py.reduce((a,b)=>a+cW(b).net,0);const profit=tB-pB-tE-tP;const totalBankBal=masters.banks.reduce((a,b)=>a+getBankBal(data.bankTxns||[],masters.banks,b.id),0);const totalPettyBal=masters.pettyCash.reduce((a,b)=>a+getPettyBal(data.pettyTxns||[],masters.pettyCash,b.id),0);return{tB,tG,tTDS,net:tB+tG-tTDS,pB,pG,tE,tP,profit,margin:tB?(profit/tB*100).toFixed(1):0,totalBankBal,totalPettyBal};},[fData,data,masters]);
@@ -721,10 +724,10 @@ function Main({user,onLogout,settings,setSettings}){
           <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
             <Sel val={dprSite} onChange={setDprSite} opts={[{v:"all",l:"All Sites"},...masters.sites.map(s=>({v:s.id,l:s.name}))]}/>
           </div>
-          {(data.dpr||[]).filter(d=>dprSite==="all"||d.siteId===dprSite).map((d,di)=>{const so=(data.saleOrders||[]).find(s=>s.id===d.soId);return(
+          {(data.dpr||[]).filter(d=>dprSite==="all"||d.siteId===dprSite).map((d,di)=>{const jo=(data.jobOrders||[]).find(j=>j.id===d.jobOrderId);const so=jo?(data.saleOrders||[]).find(s=>s.id===jo.soId):(data.saleOrders||[]).find(s=>s.id===d.soId);return(
             <div key={di} style={{...ss.card,marginBottom:14,overflow:"hidden"}}>
               <div style={{padding:"10px 16px",borderBottom:BD,display:"flex",justifyContent:"space-between",alignItems:"center",background:G(C.bl,0.06)}}>
-                <div><span style={{color:C.or,fontWeight:700,fontSize:12}}>DPR — {d.date}</span><span style={{color:C.gr,fontSize:10,marginLeft:10}}>{sName(d.siteId)}</span>{so&&<span style={{color:C.tl,fontSize:10,marginLeft:10}}>SO: {so.desc}</span>}</div>
+                <div><span style={{color:C.or,fontWeight:700,fontSize:12}}>DPR — {d.date}</span><span style={{color:C.gr,fontSize:10,marginLeft:10}}>{sName(d.siteId)}</span>{jo&&<span style={{color:C.pu,fontSize:10,marginLeft:10}}>JO: {jo.joNo}</span>}{so&&<span style={{color:C.tl,fontSize:10,marginLeft:10}}>SO: {so.desc}</span>}</div>
                 <div style={{display:"flex",gap:12,fontSize:10}}><span style={{color:C.si}}>Supervisor: <b style={{color:C.pu}}>{d.supervisor}</b></span><span style={{color:C.si}}>Workers: <b style={{color:C.tl}}>{d.workers}</b></span><span style={{color:C.si}}>Weather: <span style={{color:C.bl}}>{d.weather}</span></span></div>
               </div>
               {d.clientInstructions&&<div style={{padding:"7px 16px",background:G(C.or,0.05),borderBottom:BD,fontSize:11}}><span style={{color:C.or,fontWeight:700}}>📌 Client Instructions: </span><span style={{color:"#CBD5E1"}}>{d.clientInstructions}</span></div>}
@@ -732,7 +735,15 @@ function Main({user,onLogout,settings,setSettings}){
                 <thead><tr style={{background:"#060C1A"}}><th style={ss.th}>Type</th><th style={ss.th}>Item / Service</th><th style={ss.th}>Completed Qty</th><th style={ss.th}>Unit</th><th style={ss.th}>Remarks</th></tr></thead>
                 <tbody>{(d.entries||[]).map((e,i)=><tr key={i}><td style={ss.td}><Tag c={e.type==="service"?"b":"o"} ch={e.type}/></td><td style={ss.td}>{e.name}</td><td style={{...ss.td,color:C.gn,fontWeight:700}}>{e.completedQty}</td><td style={ss.td}>{e.unit}</td><td style={{...ss.td,color:C.gr}}>{e.remarks}</td></tr>)}</tbody>
               </table>
-              {d.soId&&so&&<div style={{padding:"8px 16px",borderTop:BD,background:G(C.tl,0.04)}}>
+              {d.jobOrderId&&jo&&<div style={{padding:"8px 16px",borderTop:BD,background:G(C.tl,0.04)}}>
+                <div style={{color:C.tl,fontSize:10,fontWeight:700,marginBottom:6,letterSpacing:1}}>JOB ORDER PROGRESS TRACKER</div>
+                {getJoProgress(d.jobOrderId).map((p,i)=>{const pct=p.estimated?Math.min(100,Math.round(p.completed/p.estimated*100)):0;return <div key={i} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}><span style={{color:C.si}}>{p.desc}</span><span style={{color:C.gr}}>Est: {p.estimated} {p.unit} | Done: <b style={{color:C.gn}}>{p.completed}</b> | Balance: <b style={{color:C.rd}}>{p.balance}</b></span></div>
+                  <div style={{height:5,background:"#0A1223",borderRadius:3}}><div style={{height:"100%",width:pct+"%",background:`linear-gradient(90deg,${C.tl},${G(C.tl,0.5)})`,borderRadius:3}}/></div>
+                  <div style={{color:"#1E2D45",fontSize:9,marginTop:1}}>{pct}% complete</div>
+                </div>;})}
+              </div>}
+              {!d.jobOrderId&&d.soId&&so&&<div style={{padding:"8px 16px",borderTop:BD,background:G(C.tl,0.04)}}>
                 <div style={{color:C.tl,fontSize:10,fontWeight:700,marginBottom:6,letterSpacing:1}}>SO PROGRESS TRACKER</div>
                 {getSoProgress(d.soId).map((p,i)=>{const pct=p.estimated?Math.min(100,Math.round(p.completed/p.estimated*100)):0;return <div key={i} style={{marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}><span style={{color:C.si}}>{p.desc}</span><span style={{color:C.gr}}>Est: {p.estimated} {p.unit} | Done: <b style={{color:C.gn}}>{p.completed}</b> | Balance: <b style={{color:C.rd}}>{p.balance}</b></span></div>
@@ -2120,21 +2131,41 @@ function Main({user,onLogout,settings,setSettings}){
           <Btn full onClick={()=>{const newItem={...form,id:uid()};upd("otherIncome",arr=>modal.oid?arr.map(x=>x.id===modal.oid?{...newItem,id:modal.oid}:x):[...arr,newItem]);if(form.via==="bank"&&form.accountId)upd("bankTxns",arr=>[...arr,{id:uid(),bankId:form.accountId,date:form.date,desc:(form.cat||"")+" — "+form.desc,type:"Cr",amt:form.amt||0,ref:form.ref||""}]);else if(form.via==="petty"&&form.accountId)upd("pettyTxns",arr=>[...arr,{id:uid(),pettyId:form.accountId,date:form.date,desc:(form.cat||"")+" — "+form.desc,type:"Cr",amt:form.amt||0,by:user.name}]);setModal(null);setForm({});}}>Save Other Income</Btn>
         </div>}
 
-        {/* DPR (linked to Sale Order, progress tracking, client instructions) */}
+        {/* DPR (linked to Job Order, progress tracking, client instructions) */}
         {mod==="dpr"&&<div>
           <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date||""} onChange={v=>sf("date",v)} type="date"/></F><F label="Site"><Sel val={form.siteId||""} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
-          <GR cols="1fr 1fr"><F label="Link Sale Order"><Sel val={form.soId||""} onChange={v=>{sf("soId",v);const so=(data.saleOrders||[]).find(s=>s.id===v);if(so){const entries=(so.lineItems||[]).map((li,idx)=>({type:"service",name:li.desc,soLineIdx:idx,completedQty:0,unit:li.unit,remarks:""}));sf("entries",entries);}}} opts={[{v:"",l:"No Sale Order"},...(data.saleOrders||[]).map(s=>({v:s.id,l:s.client+" — "+s.desc}))]}/></F><F label="Supervisor"><Sel val={form.supervisor||""} onChange={v=>sf("supervisor",v)} opts={[{v:"",l:"Select"},...masters.labours.filter(l=>l.role==="Supervisor").map(l=>l.name)]}/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Link Job Order">
+              <Sel val={form.jobOrderId||""} onChange={v=>{
+                sf("jobOrderId",v);
+                const jo=(data.jobOrders||[]).find(j=>j.id===v);
+                if(jo){
+                  sf("soId", jo.soId);
+                  const entries=(jo.tasks||[]).map((t,idx)=>({type:"service",name:t.name,taskId:t.id,soLineIdx:idx,completedQty:0,unit:t.unit,remarks:""}));
+                  sf("entries",entries);
+                }
+              }} opts={[{v:"",l:"No Job Order"},...(data.jobOrders||[]).filter(j=>!form.siteId || j.siteId===form.siteId).map(j=>({v:j.id,l:j.joNo+" — "+sName(j.siteId)}))]}/>
+            </F>
+            <F label="Supervisor"><Sel val={form.supervisor||""} onChange={v=>sf("supervisor",v)} opts={[{v:"",l:"Select"},...masters.labours.filter(l=>l.role==="Supervisor").map(l=>l.name)]}/></F>
+          </GR>
           <GR cols="1fr 1fr"><F label="Weather"><Sel val={form.weather||"Clear"} onChange={v=>sf("weather",v)} opts={["Clear","Cloudy","Rain","Hot","Cold"]}/></F><F label="Workers on Site"><Num val={form.workers||0} onChange={v=>sf("workers",v)}/></F></GR>
           <F label="Client / Engineer Instructions"><Inp val={form.clientInstructions||""} onChange={v=>sf("clientInstructions",v)} placeholder="Instructions received from client / engineer / architect today..."/></F>
           <F label="Day Remarks"><Inp val={form.remarks||""} onChange={v=>sf("remarks",v)} placeholder="Overall progress summary..."/></F>
           <div style={{...ss.card,padding:12,marginBottom:10,background:"#060C1A"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <span style={{color:C.si,fontSize:10,textTransform:"uppercase",letterSpacing:.5}}>Work Progress Entries</span>
-              <button style={{padding:"4px 12px",borderRadius:6,border:"1px solid "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontFamily:"monospace",fontSize:10,fontWeight:700}} onClick={()=>sf("entries",[...(form.entries||[]),{type:"service",name:"",soLineIdx:null,completedQty:0,unit:"",remarks:""}])}>+ Add Row</button>
+              <button style={{padding:"4px 12px",borderRadius:6,border:"1px solid "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontFamily:"monospace",fontSize:10,fontWeight:700}} onClick={()=>sf("entries",[...(form.entries||[]),{type:"service",name:"",taskId:null,completedQty:0,unit:"",remarks:""}])}>+ Add Row</button>
             </div>
-            {(form.entries||[]).map((e,i)=>{const so=form.soId?(data.saleOrders||[]).find(s=>s.id===form.soId):null;return <div key={i} style={{display:"grid",gridTemplateColumns:"70px 2fr 1fr 1fr 1fr auto",gap:5,marginBottom:5,alignItems:"center"}}>
+            {(form.entries||[]).map((e,i)=>{const jo=form.jobOrderId?(data.jobOrders||[]).find(j=>j.id===form.jobOrderId):null;return <div key={i} style={{display:"grid",gridTemplateColumns:"70px 2fr 1fr 1fr 1fr auto",gap:5,marginBottom:5,alignItems:"center"}}>
               <select style={{...ss.inp,marginBottom:0,fontSize:10}} value={e.type} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],type:ev.target.value};sf("entries",ne);}}><option value="service">Service</option><option value="item">Item</option></select>
-              {so&&e.type==="service"?<select style={{...ss.inp,marginBottom:0}} value={e.soLineIdx!=null?e.soLineIdx:""} onChange={ev=>{const ne=[...(form.entries||[])];const idx=ev.target.value!==""?+ev.target.value:null;ne[i]={...ne[i],soLineIdx:idx,name:idx!=null?(so.lineItems[idx]||{}).desc||"":ne[i].name,unit:idx!=null?(so.lineItems[idx]||{}).unit||"":ne[i].unit};sf("entries",ne);}}><option value="">Custom Item</option>{(so.lineItems||[]).map((l,j)=><option key={j} value={j}>{l.desc}</option>)}</select>:<input style={{...ss.inp,marginBottom:0}} value={e.name} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],name:ev.target.value};sf("entries",ne);}} placeholder="Name"/>}
+              {jo&&e.type==="service"?<select style={{...ss.inp,marginBottom:0}} value={e.taskId||""} onChange={ev=>{
+                const ne=[...(form.entries||[])];
+                const tId=ev.target.value;
+                const task=(jo.tasks||[]).find(t=>t.id===tId);
+                const idx=(jo.tasks||[]).findIndex(t=>t.id===tId);
+                ne[i]={...ne[i],taskId:tId,soLineIdx:idx>=0?idx:null,name:task?task.name:ne[i].name,unit:task?task.unit:ne[i].unit};
+                sf("entries",ne);
+              }}><option value="">Custom Task</option>{(jo.tasks||[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>:<input style={{...ss.inp,marginBottom:0}} value={e.name} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],name:ev.target.value};sf("entries",ne);}} placeholder="Name"/>}
               <input type="number" style={{...ss.inp,marginBottom:0}} value={e.completedQty||0} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],completedQty:+ev.target.value};sf("entries",ne);}} placeholder="Qty Done"/>
               <input style={{...ss.inp,marginBottom:0}} value={e.unit||""} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],unit:ev.target.value};sf("entries",ne);}} placeholder="Unit"/>
               <input style={{...ss.inp,marginBottom:0}} value={e.remarks||""} onChange={ev=>{const ne=[...(form.entries||[])];ne[i]={...ne[i],remarks:ev.target.value};sf("entries",ne);}} placeholder="Remarks"/>
