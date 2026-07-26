@@ -656,7 +656,7 @@ function Main({user,onLogout,settings,setSettings}){
               <KCard icon="⏳" label="Net Receivable" value={INR(k.net)} color={C.pu}/>
             </div>
           </div>}
-          </div>}
+
 
           {/* ══ JOB ORDER BUDGET TRACKING ══ */}
           {fData.jobOrders?.length > 0 && <div style={{...ss.card, padding:14, marginBottom:12, background:"linear-gradient(135deg,#0E1628,#0A1223)"}}>
