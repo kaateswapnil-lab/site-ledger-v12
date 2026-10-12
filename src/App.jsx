@@ -2,11 +2,10 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 
 /* ═══════════ DESIGN TOKENS ═══════════ */
-const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"monospace",fontSize:14,logoUrl:""};
+const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"monospace",fontSize:14,logoUrl:"",strictApproval:false};
 const getSettings=()=>{try{return {...DEF_SETTINGS,...JSON.parse(localStorage.getItem("sl_settings")||"{}")};}catch{return DEF_SETTINGS;}};
-const saveSettings=s=>localStorage.setItem("sl_settings",JSON.stringify(s));
-const loadData=()=>{try{const d=localStorage.getItem("sl_data");return d?JSON.parse(d):null;}catch{return null;}};
-const persistData=d=>localStorage.setItem("sl_data",JSON.stringify(d));
+const saveSettings=s=>{try{localStorage.setItem("sl_settings",JSON.stringify(s));}catch(e){console.error(e);}};
+
 
 const mkColors=(accent,theme="dark")=>{
   const isLight=theme==="light";
@@ -212,6 +211,126 @@ const INIT_D={
     {id:"sd1",siteId:"s1",name:"Pier Reinforcement Drawing Rev-2.pdf",type:"PDF",date:"2025-01-15",size:"3.2 MB"},
     {id:"sd2",siteId:"s2",name:"Block A Foundation Soil Report.docx",type:"DOCX",date:"2025-01-20",size:"1.4 MB"}
   ],
+};
+
+/* ══════════ PERSISTENCE & STORAGE ENGINE ══════════ */
+const loadData=()=>{
+  try{
+    const raw=localStorage.getItem("sl_data");
+    if(!raw) return INIT_D;
+    const parsed=JSON.parse(raw);
+    const merged={...INIT_D,...parsed};
+    Object.keys(INIT_D).forEach(k=>{
+      if(merged[k]===undefined||merged[k]===null){
+        merged[k]=INIT_D[k];
+      }
+    });
+    return merged;
+  }catch(e){
+    console.error("Error loading sl_data:",e);
+    return INIT_D;
+  }
+};
+
+const persistData=(d)=>{
+  try{
+    localStorage.setItem("sl_data",JSON.stringify(d));
+    localStorage.setItem("sl_last_saved",new Date().toISOString());
+  }catch(e){
+    console.error("Error saving sl_data:",e);
+  }
+};
+
+const loadMasters=()=>{
+  try{
+    const raw=localStorage.getItem("sl_masters");
+    if(!raw) return INIT_M;
+    const parsed=JSON.parse(raw);
+    const merged={...INIT_M,...parsed};
+    Object.keys(INIT_M).forEach(k=>{
+      if(merged[k]===undefined||merged[k]===null){
+        merged[k]=INIT_M[k];
+      }
+    });
+    if(!merged.company) merged.company=INIT_M.company;
+    if(!merged.users||!merged.users.length) merged.users=INIT_M.users;
+    return merged;
+  }catch(e){
+    console.error("Error loading sl_masters:",e);
+    return INIT_M;
+  }
+};
+
+const persistMasters=(m)=>{
+  try{
+    localStorage.setItem("sl_masters",JSON.stringify(m));
+  }catch(e){
+    console.error("Error saving sl_masters:",e);
+  }
+};
+
+const getSessionUser=()=>{
+  try{
+    return JSON.parse(localStorage.getItem("sl_session_user")||sessionStorage.getItem("sl_session_user")||"null");
+  }catch(e){
+    return null;
+  }
+};
+
+const saveSessionUser=(u)=>{
+  try{
+    localStorage.setItem("sl_session_user",JSON.stringify(u));
+    sessionStorage.setItem("sl_session_user",JSON.stringify(u));
+  }catch(e){}
+};
+
+const clearSessionUser=()=>{
+  try{
+    localStorage.removeItem("sl_session_user");
+    sessionStorage.removeItem("sl_session_user");
+  }catch(e){}
+};
+
+const getSnapshots=()=>{
+  try{
+    return JSON.parse(localStorage.getItem("sl_snapshots")||"[]");
+  }catch(e){
+    return [];
+  }
+};
+
+const saveSnapshot=(label="Manual Checkpoint", d=null, m=null, s=null)=>{
+  try{
+    const dataToSave = d || loadData();
+    const mastersToSave = m || loadMasters();
+    const settingsToSave = s || getSettings();
+    const snap = {
+      id: "snap_" + Date.now(),
+      label,
+      date: new Date().toISOString(),
+      user: (getSessionUser()||{}).name || "User",
+      recordCount: Object.values(dataToSave).reduce((acc, v)=>acc + (Array.isArray(v)?v.length:0), 0),
+      payload: { data: dataToSave, masters: mastersToSave, settings: settingsToSave }
+    };
+    const current = getSnapshots();
+    const updated = [snap, ...current.filter(x=>x.id!==snap.id)].slice(0, 8);
+    localStorage.setItem("sl_snapshots", JSON.stringify(updated));
+    return snap;
+  }catch(e){
+    console.error("Error saving snapshot:", e);
+    return null;
+  }
+};
+
+const deleteSnapshot=(snapId)=>{
+  try{
+    const current = getSnapshots();
+    const updated = current.filter(s=>s.id!==snapId);
+    localStorage.setItem("sl_snapshots", JSON.stringify(updated));
+    return updated;
+  }catch(e){
+    return [];
+  }
 };
 
 /* ══════════ PRINT HELPER ══════════ */
@@ -535,14 +654,553 @@ function MiniCalendar(){
   </div>;
 }
 
-function Login({onLogin}){const[u,setU]=useState("");const[p,setP]=useState("");const[err,setErr]=useState("");const go=()=>{const usr=INIT_M.users.find(x=>x.username===u&&x.password===p);if(usr)onLogin(usr);else setErr("Invalid credentials");};return <div style={{minHeight:"100vh",background:`radial-gradient(ellipse at 20% 50%,#0F1D33,${C.dk})`,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 2px 2px,rgba(96,165,250,.04) 1px,transparent 0)",backgroundSize:"32px 32px",pointerEvents:"none"}}/><div style={{...ss.card,padding:44,width:400,textAlign:"center",boxShadow:"0 32px 80px rgba(0,0,0,.7)",position:"relative",background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{position:"absolute",top:-1,left:"50%",transform:"translateX(-50%)",width:"60%",height:2,background:"linear-gradient(90deg,transparent,#F59E0B,transparent)",borderRadius:2}}/><div style={{width:64,height:64,background:"linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.05))",borderRadius:16,border:"1px solid rgba(245,158,11,.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:30}}>🏗</div><div style={{color:C.or,fontFamily:"monospace",fontWeight:800,fontSize:26,letterSpacing:4,marginBottom:4}}>SITE LEDGER</div><div style={{color:"#334155",fontSize:11,marginBottom:32,letterSpacing:1}}>v9 — Civil Contractor ERP</div><div style={{textAlign:"left",background:"#060C1A",borderRadius:10,padding:16,border:BD}}><F label="Username"><Inp val={u} onChange={setU} placeholder="Username"/></F><F label="Password"><input type="password" style={{...ss.inp,marginBottom:0}} value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Password"/></F></div>{err&&<div style={{color:C.rd,fontSize:11,margin:"10px 0",padding:"8px 12px",background:"rgba(248,113,113,.08)",borderRadius:7,border:"1px solid rgba(248,113,113,.2)"}}>{err}</div>}<div style={{marginTop:14}}><Btn full onClick={go}>LOGIN →</Btn></div></div></div>;}
+function Login({onLogin, onOpenRestore}){
+  const[u,setU]=useState("");
+  const[p,setP]=useState("");
+  const[err,setErr]=useState("");
+  const go=()=>{
+    const m = loadMasters() || INIT_M;
+    const users = (m && m.users && m.users.length) ? m.users : INIT_M.users;
+    const usr = users.find(x => (x.username||"").trim().toLowerCase() === (u||"").trim().toLowerCase() && x.password === p);
+    if(usr) onLogin(usr);
+    else setErr("Invalid credentials");
+  };
+  return <div style={{minHeight:"100vh",background:`radial-gradient(ellipse at 20% 50%,#0F1D33,${C.dk})`,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 2px 2px,rgba(96,165,250,.04) 1px,transparent 0)",backgroundSize:"32px 32px",pointerEvents:"none"}}/><div style={{...ss.card,padding:44,width:400,textAlign:"center",boxShadow:"0 32px 80px rgba(0,0,0,.7)",position:"relative",background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{position:"absolute",top:-1,left:"50%",transform:"translateX(-50%)",width:"60%",height:2,background:"linear-gradient(90deg,transparent,#F59E0B,transparent)",borderRadius:2}}/><div style={{width:64,height:64,background:"linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.05))",borderRadius:16,border:"1px solid rgba(245,158,11,.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:30}}>🏗</div><div style={{color:C.or,fontFamily:"monospace",fontWeight:800,fontSize:26,letterSpacing:4,marginBottom:4}}>SITE LEDGER</div><div style={{color:"#334155",fontSize:11,marginBottom:32,letterSpacing:1}}>v12 — Civil Contractor ERP</div><div style={{textAlign:"left",background:"#060C1A",borderRadius:10,padding:16,border:BD}}><F label="Username"><Inp val={u} onChange={setU} placeholder="Username"/></F><F label="Password"><input type="password" style={{...ss.inp,marginBottom:0}} value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Password"/></F></div>{err&&<div style={{color:C.rd,fontSize:11,margin:"10px 0",padding:"8px 12px",background:"rgba(248,113,113,.08)",borderRadius:7,border:"1px solid rgba(248,113,113,.2)"}}>{err}</div>}<div style={{marginTop:14}}><Btn full onClick={go}>LOGIN →</Btn></div><div style={{marginTop:18,textAlign:"center"}}><button onClick={onOpenRestore} style={{background:"none",border:"none",color:C.tl,cursor:"pointer",fontSize:11,fontFamily:"monospace",textDecoration:"underline",opacity:0.85}}>🔄 Disaster Recovery / Restore Backup</button></div></div></div>;
+}
 
 const INIT_WC=[
   {id:"wc1",siteId:"s1",policyNo:"WC/2025/001",insurer:"New India Assurance",sumAssured:5000000,premium:25000,startDate:"2025-04-01",expiryDate:"2026-03-31"},
   {id:"wc2",siteId:"s2",policyNo:"WC/2025/002",insurer:"Oriental Insurance",sumAssured:3000000,premium:15000,startDate:"2025-04-01",expiryDate:"2026-03-31"},
 ];
 
-export default function App(){const[user,setUser]=useState(null);const[settings,setSettings]=useState(getSettings);if(!user)return <Login onLogin={setUser}/>;return <Main user={user} onLogout={()=>setUser(null)} settings={settings} setSettings={v=>{setSettings(v);saveSettings(v);}}/>;};
+function BackupRestoreModal({isOpen, onClose, data, setData, masters, setMasters, settings, setSettings, isEmergency, user}){
+  const [activeTab, setActiveTab] = useState("file");
+  const [snapshots, setSnapshots] = useState(getSnapshots);
+  const [snapLabel, setSnapLabel] = useState("");
+  const [pasteCode, setPasteCode] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [previewData, setPreviewData] = useState(null);
+
+  const refreshSnaps = () => setSnapshots(getSnapshots());
+
+  const handleDownloadJson = () => {
+    const meta = {
+      exportedAt: new Date().toISOString(),
+      version: "v12",
+      appName: "Site Ledger ERP",
+      user: (user||{}).name || "Admin",
+      records: {
+        sales: (data.sales||[]).length,
+        purchases: (data.purchases||[]).length,
+        jobOrders: (data.jobOrders||[]).length,
+        dpr: (data.dpr||[]).length,
+        vouchers: (data.vouchers||[]).length,
+        sites: (masters.sites||[]).length,
+        users: (masters.users||[]).length,
+      }
+    };
+    const backupObj = { meta, data, masters, settings };
+    const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    const dStr = new Date().toISOString().slice(0,10);
+    const tStr = new Date().toTimeString().slice(0,5).replace(":", "-");
+    a.href = URL.createObjectURL(blob);
+    a.download = `SiteLedger_Backup_${dStr}_${tStr}.json`;
+    a.click();
+    setStatusMsg("Backup JSON downloaded successfully.");
+  };
+
+  const handleFileSelect = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.data && !parsed.masters) {
+          alert("Invalid backup file format: missing data or masters.");
+          return;
+        }
+        setPreviewData(parsed);
+      } catch (err) {
+        alert("Failed to parse JSON backup file: " + err.message);
+      }
+    };
+    reader.readAsText(f);
+  };
+
+  const applyRestoration = (backupObj, mode = "overwrite") => {
+    try {
+      saveSnapshot("Safety auto-save before restore");
+      let nextData = data;
+      let nextMasters = masters;
+      let nextSettings = settings;
+
+      if (mode === "overwrite") {
+        if (backupObj.data) nextData = backupObj.data;
+        if (backupObj.masters) nextMasters = backupObj.masters;
+        if (backupObj.settings) nextSettings = backupObj.settings;
+      } else {
+        if (backupObj.data) {
+          nextData = { ...data };
+          Object.keys(backupObj.data).forEach(k => {
+            if (Array.isArray(backupObj.data[k])) {
+              const existingIds = new Set((nextData[k]||[]).map(x=>x.id));
+              const newItems = backupObj.data[k].filter(x=>!existingIds.has(x.id));
+              nextData[k] = [...(nextData[k]||[]), ...newItems];
+            }
+          });
+        }
+        if (backupObj.masters) {
+          nextMasters = { ...masters };
+          Object.keys(backupObj.masters).forEach(k => {
+            if (Array.isArray(backupObj.masters[k])) {
+              const existingKeys = new Set((nextMasters[k]||[]).map(x=>x.id||x.name));
+              const newItems = backupObj.masters[k].filter(x=>!existingKeys.has(x.id||x.name));
+              nextMasters[k] = [...(nextMasters[k]||[]), ...newItems];
+            }
+          });
+        }
+      }
+
+      setData(nextData);
+      persistData(nextData);
+      setMasters(nextMasters);
+      persistMasters(nextMasters);
+      if (backupObj.settings) {
+        setSettings(nextSettings);
+        saveSettings(nextSettings);
+      }
+      refreshSnaps();
+      setPreviewData(null);
+      alert("✅ Data successfully restored! Changes have been permanently saved.");
+      if (isEmergency) window.location.reload();
+      else onClose();
+    } catch (e) {
+      alert("Error restoring data: " + e.message);
+    }
+  };
+
+  const handleTakeSnapshot = () => {
+    const lbl = snapLabel.trim() || ("Checkpoint " + new Date().toLocaleTimeString());
+    const res = saveSnapshot(lbl, data, masters, settings);
+    if (res) {
+      setSnapLabel("");
+      refreshSnaps();
+      setStatusMsg("Local snapshot checkpoint created successfully!");
+    }
+  };
+
+  const handleCopyClipboard = () => {
+    const payload = JSON.stringify({
+      meta: { exportedAt: new Date().toISOString(), type: "clipboard" },
+      data,
+      masters,
+      settings
+    });
+    navigator.clipboard.writeText(payload).then(()=>{
+      setStatusMsg("Full backup copied to clipboard! You can paste and save it anywhere.");
+      alert("✅ System backup copied to clipboard! You can send it via email/chat or store it safely.");
+    }).catch(()=>{
+      alert("Clipboard access not available in this browser context.");
+    });
+  };
+
+  const handlePasteRestore = () => {
+    if (!pasteCode.trim()) return alert("Please paste backup code first.");
+    try {
+      const parsed = JSON.parse(pasteCode.trim());
+      applyRestoration(parsed, "overwrite");
+    } catch (e) {
+      alert("Invalid backup string: " + e.message);
+    }
+  };
+
+  const handleExportCsv = (type) => {
+    const exportMap = {
+      sales: { name: "Sales_Invoices.csv", arr: data.sales },
+      purchases: { name: "Purchase_Bills.csv", arr: data.purchases },
+      dpr: { name: "DPR_Daily_Progress.csv", arr: data.dpr },
+      jobOrders: { name: "Job_Orders.csv", arr: data.jobOrders },
+      inventory: { name: "Inventory_Stock.csv", arr: data.inventory },
+      attendance: { name: "HR_Attendance.csv", arr: data.attendance },
+      vouchers: { name: "Vouchers_Ledger.csv", arr: data.vouchers },
+      sites: { name: "Masters_Sites.csv", arr: masters.sites },
+      clients: { name: "Masters_Clients.csv", arr: masters.clients },
+      vendors: { name: "Masters_Vendors.csv", arr: masters.vendors },
+      items: { name: "Masters_Items.csv", arr: masters.items },
+      services: { name: "Masters_Services.csv", arr: masters.services },
+    };
+    const item = exportMap[type];
+    if (!item || !item.arr || !item.arr.length) return alert("No records available to export for " + type);
+    const keys = Object.keys(item.arr[0]);
+    const lines = [
+      keys.join(","),
+      ...item.arr.map(row => keys.map(k => {
+        let val = row[k];
+        if (typeof val === "object" && val !== null) val = JSON.stringify(val);
+        val = String(val ?? "").replace(/"/g, '""');
+        return `"${val}"`;
+      }).join(","))
+    ];
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = item.name;
+    a.click();
+    setStatusMsg(`Downloaded ${item.name}`);
+  };
+
+  const bTabs = [
+    { id: "file", label: "📦 File Backup & Restore", icon: "📁" },
+    { id: "snapshots", label: `📸 Local Snapshots (${snapshots.length})`, icon: "⚡" },
+    { id: "clipboard", label: "📋 Clipboard / Code", icon: "📋" },
+    { id: "csv", label: "📊 Excel / CSV Packs", icon: "📊" },
+    { id: "reset", label: "⚠️ Disaster Recovery & Reset", icon: "🛠" },
+  ];
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(2,6,23,0.85)",backdropFilter:"blur(6px)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{...ss.card,width:800,maxWidth:"96vw",maxHeight:"90vh",display:"flex",flexDirection:"column",background:"#08101E",border:"1px solid "+C.or,boxShadow:"0 25px 60px rgba(0,0,0,0.8)",borderRadius:12,overflow:"hidden"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #1E2D45",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(90deg,#0A152A,#060D1A)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:22}}>💾</span>
+            <div>
+              <div style={{color:C.or,fontWeight:800,fontSize:15,fontFamily:"monospace",letterSpacing:1}}>
+                {isEmergency ? "DISASTER RECOVERY & SYSTEM RESTORE" : "BACKUP & RESTORE DATA MANAGEMENT"}
+              </div>
+              <div style={{color:C.gr,fontSize:10}}>Complete Data Persistence, Checkpoints & Export Engine</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.si,fontSize:18,cursor:"pointer",fontWeight:700}}>✕</button>
+        </div>
+
+        <div style={{display:"flex",background:"#060B14",borderBottom:"1px solid #16233B",overflowX:"auto"}}>
+          {bTabs.map(t=>{
+            const active = activeTab === t.id;
+            return (
+              <button key={t.id} onClick={()=>setActiveTab(t.id)} style={{
+                padding:"10px 16px",
+                background:active?"linear-gradient(180deg,#0F1E38,#0A152A)":"transparent",
+                border:"none",
+                borderBottom:active?("2px solid "+C.or):"2px solid transparent",
+                color:active?C.or:C.si,
+                cursor:"pointer",
+                fontFamily:"monospace",
+                fontSize:11,
+                fontWeight:active?700:400,
+                display:"flex",
+                alignItems:"center",
+                gap:6,
+                whiteSpace:"nowrap"
+              }}>
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{flex:1,overflowY:"auto",padding:20}}>
+          {statusMsg && (
+            <div style={{marginBottom:14,padding:"8px 14px",borderRadius:6,background:G(C.gn,0.1),border:"1px solid "+G(C.gn,0.3),color:C.gn,fontSize:11,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span>{statusMsg}</span>
+              <button onClick={()=>setStatusMsg("")} style={{background:"none",border:"none",color:C.gn,cursor:"pointer",fontSize:10}}>✕</button>
+            </div>
+          )}
+
+          {activeTab==="file" && <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div style={{...ss.card,padding:16,background:"#0B1526",border:"1px solid #1E2D45"}}>
+                <div style={{color:C.tl,fontWeight:700,fontSize:13,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  <span>⬇</span> <span>Download Full System Image</span>
+                </div>
+                <div style={{color:C.si,fontSize:11,lineHeight:1.5,marginBottom:14}}>
+                  Creates a complete, uncompressed JSON backup containing all project transactions, financial ledgers, job orders, DPR logs, input rates, and master databases.
+                </div>
+                <div style={{background:"#060C18",padding:10,borderRadius:6,border:"1px solid #142238",marginBottom:14,fontSize:10,color:C.gr}}>
+                  <div>• Sales & Orders: {(data.sales||[]).length + (data.saleOrders||[]).length} records</div>
+                  <div>• Purchases & Bills: {(data.purchases||[]).length + (data.purchaseOrders||[]).length} records</div>
+                  <div>• Job Orders & DPRs: {(data.jobOrders||[]).length + (data.dpr||[]).length} records</div>
+                  <div>• Masters (Sites, Clients, Items...): {Object.values(masters).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)} records</div>
+                </div>
+                <Btn full onClick={handleDownloadJson} color={C.tl} icon="⬇">Download JSON Backup</Btn>
+              </div>
+
+              <div style={{...ss.card,padding:16,background:"#0B1526",border:"1px solid #1E2D45"}}>
+                <div style={{color:C.gn,fontWeight:700,fontSize:13,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  <span>⬆</span> <span>Restore From Backup File</span>
+                </div>
+                <div style={{color:C.si,fontSize:11,lineHeight:1.5,marginBottom:14}}>
+                  Upload any previously downloaded <code style={{color:C.or}}>.json</code> backup file to restore records. A safety checkpoint is automatically created before applying changes.
+                </div>
+                <label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 16px",borderRadius:8,border:`1px dashed ${C.gn}`,background:G(C.gn,0.08),color:C.gn,cursor:"pointer",fontFamily:"monospace",fontSize:12,fontWeight:700,marginBottom:12}}>
+                  <span>📂</span> Click to Browse / Select Backup JSON
+                  <input type="file" accept=".json" style={{display:"none"}} onChange={handleFileSelect}/>
+                </label>
+                {previewData && (
+                  <div style={{background:"#060C18",padding:12,borderRadius:8,border:"1px solid "+C.or}}>
+                    <div style={{color:C.or,fontWeight:700,fontSize:11,marginBottom:6}}>🔍 Backup File Verification</div>
+                    <div style={{color:C.si,fontSize:10,marginBottom:10}}>
+                      Exported At: <b>{(previewData.meta||{}).exportedAt || "Unknown date"}</b><br/>
+                      Sales: {(previewData.data?.sales||[]).length} | Purchases: {(previewData.data?.purchases||[]).length} | DPR: {(previewData.data?.dpr||[]).length} | Sites: {(previewData.masters?.sites||[]).length}
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>applyRestoration(previewData, "overwrite")} style={{flex:1,padding:"7px 10px",borderRadius:6,background:C.gn,color:"#000",border:"none",fontWeight:700,cursor:"pointer",fontSize:11}}>
+                        ✓ Full Overwrite Restore
+                      </button>
+                      <button onClick={()=>applyRestoration(previewData, "merge")} style={{flex:1,padding:"7px 10px",borderRadius:6,background:G(C.bl,0.2),color:C.bl,border:"1px solid "+C.bl,fontWeight:700,cursor:"pointer",fontSize:11}}>
+                        🔄 Smart Merge
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>}
+
+          {activeTab==="snapshots" && <div>
+            <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+              <input
+                style={{...ss.inp,marginBottom:0,flex:1}}
+                placeholder="Snapshot label (e.g. 'Before submitting tender quote' or 'End of Week')..."
+                value={snapLabel}
+                onChange={e=>setSnapLabel(e.target.value)}
+              />
+              <Btn onClick={handleTakeSnapshot} color={C.or} icon="📸">Save Snapshot Now</Btn>
+            </div>
+
+            <div style={{...ss.card,padding:0,overflow:"hidden",background:"#091122",border:"1px solid #1E2D45"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead>
+                  <tr style={{background:"#060C1A",borderBottom:"1px solid #1E2D45"}}>
+                    <th style={{...ss.th,padding:"10px 12px"}}>Snapshot Name</th>
+                    <th style={{...ss.th,padding:"10px 12px"}}>Timestamp</th>
+                    <th style={{...ss.th,padding:"10px 12px"}}>Records</th>
+                    <th style={{...ss.th,padding:"10px 12px",textAlign:"right"}}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshots.length===0 && (
+                    <tr>
+                      <td colSpan={4} style={{padding:24,textAlign:"center",color:C.gr}}>
+                        No saved checkpoints found in this browser. Take a snapshot to create an instant rollback point!
+                      </td>
+                    </tr>
+                  )}
+                  {snapshots.map(s=>(
+                    <tr key={s.id} style={{borderBottom:"1px solid #142238"}}>
+                      <td style={{...ss.td,fontWeight:700,color:"#F1F5F9"}}>{s.label}</td>
+                      <td style={{...ss.td,color:C.si,fontFamily:"monospace"}}>{new Date(s.date).toLocaleString()}</td>
+                      <td style={{...ss.td,color:C.tl}}>{s.recordCount} records</td>
+                      <td style={{...ss.td,textAlign:"right"}}>
+                        <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                          <button onClick={()=>{
+                            if (window.confirm(`Restore state to "${s.label}"? Your current data will be saved to a pre-restore checkpoint first.`)) {
+                              applyRestoration(s.payload, "overwrite");
+                            }
+                          }} style={{padding:"4px 8px",borderRadius:4,background:G(C.gn,0.15),border:"1px solid "+C.gn,color:C.gn,cursor:"pointer",fontSize:10,fontWeight:700}}>
+                            ⚡ Restore
+                          </button>
+                          <button onClick={()=>{
+                            const blob = new Blob([JSON.stringify(s.payload, null, 2)], { type: "application/json" });
+                            const a = document.createElement("a");
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `Snapshot_${s.label.replace(/\s+/g,"_")}_${s.id}.json`;
+                            a.click();
+                          }} style={{padding:"4px 8px",borderRadius:4,background:G(C.bl,0.15),border:"1px solid "+C.bl,color:C.bl,cursor:"pointer",fontSize:10}}>
+                            ⬇ Download
+                          </button>
+                          <button onClick={()=>{
+                            if (window.confirm(`Delete snapshot checkpoint "${s.label}"?`)) {
+                              deleteSnapshot(s.id);
+                              refreshSnaps();
+                            }
+                          }} style={{padding:"4px 8px",borderRadius:4,background:G(C.rd,0.15),border:"1px solid "+C.rd,color:C.rd,cursor:"pointer",fontSize:10}}>
+                            🗑
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>}
+
+          {activeTab==="clipboard" && <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div style={{...ss.card,padding:16,background:"#0B1526",border:"1px solid #1E2D45"}}>
+                <div style={{color:C.pu,fontWeight:700,fontSize:13,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  <span>📋</span> <span>Copy Backup Code</span>
+                </div>
+                <div style={{color:C.si,fontSize:11,lineHeight:1.5,marginBottom:12}}>
+                  Copies the entire ERP database into a single encoded string. Ideal for instantly copying into an email, WhatsApp note, or Google Drive document without needing file storage.
+                </div>
+                <Btn full onClick={handleCopyClipboard} color={C.pu} icon="📋">Copy Backup String to Clipboard</Btn>
+              </div>
+
+              <div style={{...ss.card,padding:16,background:"#0B1526",border:"1px solid #1E2D45"}}>
+                <div style={{color:C.or,fontWeight:700,fontSize:13,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  <span>📥</span> <span>Paste &amp; Restore</span>
+                </div>
+                <div style={{color:C.si,fontSize:11,lineHeight:1.5,marginBottom:8}}>
+                  Paste a previously copied backup string into the box below and click restore.
+                </div>
+                <textarea
+                  rows={4}
+                  style={{width:"100%",background:"#060C18",border:"1px solid #1E2D45",borderRadius:6,padding:8,color:"#F1F5F9",fontSize:10,fontFamily:"monospace",marginBottom:10,boxSizing:"border-box",outline:"none"}}
+                  placeholder="Paste backup string here..."
+                  value={pasteCode}
+                  onChange={e=>setPasteCode(e.target.value)}
+                />
+                <Btn full onClick={handlePasteRestore} color={C.or} icon="🔄">Restore from Pasted Code</Btn>
+              </div>
+            </div>
+          </div>}
+
+          {activeTab==="csv" && <div>
+            <div style={{color:C.si,fontSize:11,marginBottom:14}}>
+              Export individual transactional tables or master modules directly to standard <b>Comma-Separated Values (CSV)</b> format compatible with Microsoft Excel, Google Sheets, Tally, and Zoho.
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:12}}>
+              {[
+                { id: "sales", title: "Sales Invoices", icon: "💰", color: C.gn, count: (data.sales||[]).length },
+                { id: "purchases", title: "Purchases & Bills", icon: "🛒", color: C.rd, count: (data.purchases||[]).length },
+                { id: "dpr", title: "Daily Progress (DPR)", icon: "📋", color: C.bl, count: (data.dpr||[]).length },
+                { id: "jobOrders", title: "Job Orders & WBS", icon: "🏗", color: C.or, count: (data.jobOrders||[]).length },
+                { id: "inventory", title: "Inventory Stock", icon: "📦", color: "#FB923C", count: (data.inventory||[]).length },
+                { id: "attendance", title: "HR Attendance", icon: "👷", color: C.pu, count: (data.attendance||[]).length },
+                { id: "vouchers", title: "Vouchers & Cash", icon: "🏦", color: C.tl, count: (data.vouchers||[]).length },
+                { id: "sites", title: "Project Sites Master", icon: "📍", color: C.bl, count: (masters.sites||[]).length },
+                { id: "clients", title: "Clients Master", icon: "🏢", color: C.gn, count: (masters.clients||[]).length },
+                { id: "vendors", title: "Vendors Master", icon: "🚛", color: C.rd, count: (masters.vendors||[]).length },
+                { id: "items", title: "Items Master", icon: "🧱", color: C.or, count: (masters.items||[]).length },
+                { id: "services", title: "Services Master", icon: "🛠", color: C.pu, count: (masters.services||[]).length },
+              ].map(card=>(
+                <div key={card.id} style={{...ss.card,padding:14,background:"#0B1526",border:"1px solid #1E2D45",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{color:card.color,fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:6}}>
+                      <span>{card.icon}</span> <span>{card.title}</span>
+                    </div>
+                    <div style={{color:C.gr,fontSize:10,marginTop:2}}>{card.count} records</div>
+                  </div>
+                  <button onClick={()=>handleExportCsv(card.id)} style={{padding:"6px 12px",borderRadius:6,background:G(card.color,0.12),border:"1px solid "+card.color,color:card.color,fontSize:11,cursor:"pointer",fontFamily:"monospace",fontWeight:700}}>
+                    CSV ⬇
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:16,textAlign:"center"}}>
+              <Btn onClick={()=>{
+                ["sales","purchases","dpr","jobOrders","inventory","attendance","vouchers","sites","clients","vendors","items","services"].forEach(k=>handleExportCsv(k));
+              }} color={C.tl} icon="📦">Export All Tables to CSV in 1-Click</Btn>
+            </div>
+          </div>}
+
+          {activeTab==="reset" && <div>
+            <div style={{...ss.card,padding:16,background:"#0B1526",border:"1px solid #1E2D45",marginBottom:16}}>
+              <div style={{color:C.or,fontWeight:700,fontSize:13,marginBottom:8}}>📊 Browser Storage &amp; Database Health</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,fontSize:11}}>
+                <div style={{background:"#060C18",padding:10,borderRadius:6}}>
+                  <div style={{color:C.gr,fontSize:9}}>TRANSACTION RECORDS</div>
+                  <div style={{color:C.gn,fontSize:16,fontWeight:800,fontFamily:"monospace"}}>{Object.values(data).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)}</div>
+                </div>
+                <div style={{background:"#060C18",padding:10,borderRadius:6}}>
+                  <div style={{color:C.gr,fontSize:9}}>MASTER RECORDS</div>
+                  <div style={{color:C.bl,fontSize:16,fontWeight:800,fontFamily:"monospace"}}>{Object.values(masters).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0)}</div>
+                </div>
+                <div style={{background:"#060C18",padding:10,borderRadius:6}}>
+                  <div style={{color:C.gr,fontSize:9}}>SAVED CHECKPOINTS</div>
+                  <div style={{color:C.pu,fontSize:16,fontWeight:800,fontFamily:"monospace"}}>{snapshots.length}</div>
+                </div>
+                <div style={{background:"#060C18",padding:10,borderRadius:6}}>
+                  <div style={{color:C.gr,fontSize:9}}>STORAGE STATUS</div>
+                  <div style={{color:C.tl,fontSize:16,fontWeight:800,fontFamily:"monospace"}}>Online &amp; Sync</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div style={{...ss.card,padding:16,background:G(C.rd,0.06),border:"1px solid "+G(C.rd,0.3)}}>
+                <div style={{color:C.rd,fontWeight:700,fontSize:13,marginBottom:6}}>🗑 Clear Transactions Only</div>
+                <div style={{color:C.si,fontSize:11,marginBottom:12}}>
+                  Resets invoices, bills, DPR, and financial vouchers to clean zero, but keeps all Sites, Clients, Vendors, Items, and Rates intact.
+                </div>
+                <Btn full onClick={()=>{
+                  if (window.confirm("Are you sure you want to clear transactions? A safety snapshot will be created automatically.")) {
+                    saveSnapshot("Pre-reset transactions backup");
+                    setData(INIT_D);
+                    persistData(INIT_D);
+                    refreshSnaps();
+                    alert("Transactions reset to initial state. Masters preserved.");
+                  }
+                }} color={C.rd} icon="🗑">Clear Transactions (Keep Masters)</Btn>
+              </div>
+
+              <div style={{...ss.card,padding:16,background:G(C.or,0.06),border:"1px solid "+G(C.or,0.3)}}>
+                <div style={{color:C.or,fontWeight:700,fontSize:13,marginBottom:6}}>🏭 Factory Reset Sample Data</div>
+                <div style={{color:C.si,fontSize:11,marginBottom:12}}>
+                  Restores original initial sample data for both transactions and masters. Creates a safety backup before resetting.
+                </div>
+                <Btn full onClick={()=>{
+                  if (window.confirm("Reset entire system to factory sample data? An automatic safety snapshot will be saved first.")) {
+                    saveSnapshot("Pre-factory reset backup");
+                    setData(INIT_D);
+                    persistData(INIT_D);
+                    setMasters(INIT_M);
+                    persistMasters(INIT_M);
+                    refreshSnaps();
+                    alert("System restored to initial sample state.");
+                  }
+                }} color={C.or} icon="🏭">Factory Reset Sample Data</Btn>
+              </div>
+            </div>
+          </div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App(){
+  const[user,setUser]=useState(getSessionUser);
+  const[settings,setSettings]=useState(getSettings);
+  const[showEmergencyRestore,setShowEmergencyRestore]=useState(false);
+
+  const handleLogin=(u)=>{
+    saveSessionUser(u);
+    setUser(u);
+  };
+
+  const handleLogout=()=>{
+    saveSnapshot("Auto-Save before Logout");
+    clearSessionUser();
+    setUser(null);
+  };
+
+  if(!user) return (
+    <>
+      <Login onLogin={handleLogin} onOpenRestore={()=>setShowEmergencyRestore(true)}/>
+      {showEmergencyRestore && (
+        <BackupRestoreModal
+          isOpen={true}
+          onClose={()=>setShowEmergencyRestore(false)}
+          data={loadData()||INIT_D}
+          setData={(d)=>{ persistData(d); }}
+          masters={loadMasters()||INIT_M}
+          setMasters={(m)=>{ persistMasters(m); }}
+          settings={settings}
+          setSettings={(s)=>{ setSettings(s); saveSettings(s); }}
+          isEmergency={true}
+          user={{role:"Admin",name:"Disaster Recovery"}}
+        />
+      )}
+    </>
+  );
+
+  return <Main user={user} onLogout={handleLogout} settings={settings} setSettings={v=>{setSettings(v);saveSettings(v);}}/>;
+};
 
 /* ══════════ MODULE CONFIG ══════════ */
 const MOD_GROUPS=[
@@ -590,7 +1248,8 @@ function Main({user,onLogout,settings,setSettings}){
   const[mTab,setMTab]=useState("sites");
   const[showKPIs,setShowKPIs]=useState(true);
   const[data,setData]=useState(()=>{const d=loadData()||INIT_D;if(!d.wcPolicies)d.wcPolicies=INIT_WC;return d;});
-  const[masters,setMasters]=useState(INIT_M);
+  const[masters,setMasters]=useState(()=>loadMasters()||INIT_M);
+  const[showBackupModal,setShowBackupModal]=useState(false);
   const[modal,setModal]=useState(null);
   const[form,setForm]=useState({});
   const[del,setDel]=useState(null);
@@ -603,18 +1262,34 @@ function Main({user,onLogout,settings,setSettings}){
   const[rpTo,setRpTo]=useState("2025-03-31");
 
   useEffect(()=>{persistData(data);},[data]);
+  useEffect(()=>{persistMasters(masters);},[masters]);
 
   const sf=(f,v)=>setForm(p=>({...p,[f]:v}));
   const co=masters.company;
   const userModAccess=user.moduleAccess||ROLE_ACCESS[user.role]||[];
   const can=t=>userModAccess.includes(t);
 
-  const upd=(key,fn)=>setData(p=>({...p,[key]:fn(p[key]||[])}));
-  const updM=(key,fn)=>setMasters(p=>({...p,[key]:fn(p[key]||[])}));
+  const upd=(key,fn)=>{
+    setData(p=>{
+      const nextArr = fn(p[key]||[]);
+      const n = {...p, [key]: nextArr};
+      persistData(n);
+      return n;
+    });
+  };
+  const updM=(key,fn)=>{
+    setMasters(p=>{
+      const nextArr = fn(p[key]||[]);
+      const n = {...p, [key]: nextArr};
+      persistMasters(n);
+      return n;
+    });
+  };
 
   const isApprover = ["Admin", "Manager", "Owner", "Site Manager"].includes(user.role);
   const checkApproval = (action, targetType, targetKey, payload, targetId) => {
     if (isApprover) return false;
+    if (!settings.strictApproval && (action === "add" || action === "edit" || action === "receive_pay")) return false;
     upd("pendingApprovals", arr => [...arr, { id: uid(), action, targetType, targetKey, payload, targetId, requestedBy: user.name, timestamp: new Date().toISOString(), status: "pending" }]);
     alert("Action submitted for approval.");
     return true;
@@ -676,7 +1351,7 @@ function Main({user,onLogout,settings,setSettings}){
   const doDelete=()=>{if(del.isM)delM(del.key,del.idx);else delRec(del.key,del.id);setDel(null);};
   const saveM=(key,item)=>{if(checkApproval(modal.oidx!=null?"edit":"add","master",key,item,modal.oidx))return;updM(key,arr=>modal.oidx!=null?arr.map((x,i)=>i===modal.oidx?{...item,id:x.id}:x):[...arr,{...item,id:uid()}]);};
 
-  const fData=useMemo(()=>{if(site==="ALL")return data;const f={};["sales","saleOrders","purchases","purchaseOrders","expenses","payroll","attendance","dpr","materialReceipts","estimates","proforma","debitNotes","creditNotes"].forEach(k=>{f[k]=(data[k]||[]).filter(x=>!x.siteId||x.siteId===site);});return{...data,...f};},[data,site]);
+  const fData=useMemo(()=>{if(site==="ALL")return data;const f={};["sales","saleOrders","purchases","purchaseOrders","expenses","payroll","attendance","dpr","materialReceipts","estimates","proforma","debitNotes","creditNotes","jobOrders","purchaseRequisitions","issues","siteDocs","otherIncome","transfers"].forEach(k=>{f[k]=(data[k]||[]).filter(x=>!x.siteId||x.siteId===site);});return{...data,...f};},[data,site]);
   const rData=useMemo(()=>{const filt=(arr,dk="date")=>(arr||[]).filter(x=>inPeriod(x[dk],rpFrom,rpTo));return{sales:filt(fData.sales),purchases:filt(fData.purchases),expenses:filt(fData.expenses),payroll:filt(fData.payroll,"month"),vouchers:filt(data.vouchers),bankTxns:filt(data.bankTxns),pettyTxns:filt(data.pettyTxns),debitNotes:filt(fData.debitNotes||[]),creditNotes:filt(fData.creditNotes||[])};},[fData,data,rpFrom,rpTo]);
 
   const sName=id=>{if(id==="CONSULTANCY")return"Consultancy";if(id==="OFFICE")return"Head Office";if(id==="GODOWN")return"Godown";return(masters.sites.find(s=>s.id===id)||{}).name||id||"—";};
@@ -864,6 +1539,11 @@ function Main({user,onLogout,settings,setSettings}){
       {/* AI Assistant Pill */}
       <button onClick={()=>setShowAI(!showAI)} title="Open Site Ledger AI Assistant" style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+C.tl,background:G(C.tl,0.12),color:C.tl,cursor:"pointer",fontSize:12,fontFamily:"monospace",fontWeight:700,display:"flex",alignItems:"center",gap:6,boxShadow:"0 0 12px "+G(C.tl,0.3)}}>
         <span>✨ AI Assistant</span>
+      </button>
+
+      {/* Backup & Restore Pill */}
+      <button onClick={()=>setShowBackupModal(true)} title="Backup & Restore Data (Multiple Options)" style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+C.bl,background:G(C.bl,0.12),color:C.bl,cursor:"pointer",fontSize:12,fontFamily:"monospace",fontWeight:700,display:"flex",alignItems:"center",gap:6,boxShadow:"0 0 12px "+G(C.bl,0.2)}}>
+        <span>💾 Backup / Restore</span>
       </button>
 
       <div style={{width:1,background:C.br,height:26}}/>
@@ -2728,24 +3408,49 @@ function Main({user,onLogout,settings,setSettings}){
               </F>
               <F label="Font Family"><Sel val={settings.font||"monospace"} onChange={v=>setSettings({...settings,font:v})} opts={[{v:"monospace",l:"Monospace (default)"},{v:"sans",l:"Sans-serif"},{v:"serif",l:"Serif"}]}/></F>
               <F label="Font Size"><Sel val={settings.fontSize||12} onChange={v=>setSettings({...settings,fontSize:+v})} opts={[{v:11,l:"Small (11px)"},{v:12,l:"Medium (12px)"},{v:14,l:"Large (14px)"},{v:16,l:"X-Large (16px)"},{v:20,l:"Jumbo (20px)"},{v:24,l:"Accessible (24px)"}]}/></F>
+              <F label="Approval Mode">
+                <div style={{display:"flex",gap:8,alignItems:"center",marginTop:4}}>
+                  <button onClick={()=>{const n={...settings,strictApproval:!settings.strictApproval};setSettings(n);saveSettings(n);}} style={{padding:"6px 12px",borderRadius:6,border:"1px solid "+(settings.strictApproval?C.or:"#1E2D45"),background:settings.strictApproval?G(C.or,0.15):"#060C1A",color:settings.strictApproval?C.or:C.gr,cursor:"pointer",fontFamily:"monospace",fontSize:11,fontWeight:700}}>
+                    {settings.strictApproval ? "🔒 Strict Approval (Queue All Data)" : "⚡ Instant Save (Direct DB Persistence)"}
+                  </button>
+                </div>
+              </F>
               <div style={{marginTop:14,display:"flex",gap:8}}>
                 <Btn onClick={()=>saveSettings(settings)} color={C.gn} icon="💾">Save Settings</Btn>
                 <Btn onClick={()=>{const d=DEF_SETTINGS;setSettings(d);saveSettings(d);}} color={C.gr}>Reset Defaults</Btn>
               </div>
             </div>
             <div style={{...ss.card,padding:20}}>
-              <div style={{color:C.or,fontWeight:700,marginBottom:16,fontSize:12,borderBottom:BD,paddingBottom:10}}>💾 Data Management</div>
-              <div style={{marginBottom:12,padding:"10px 14px",background:G(C.gn,0.07),borderRadius:8,border:`1px solid ${G(C.gn,0.2)}`}}>
-                <div style={{color:C.gn,fontWeight:700,fontSize:11,marginBottom:4}}>Auto-save Enabled</div>
-                <div style={{color:C.si,fontSize:10}}>All transaction data is automatically saved to your browser's local storage after every change.</div>
+              <div style={{color:C.or,fontWeight:700,marginBottom:16,fontSize:12,borderBottom:BD,paddingBottom:10}}>💾 Backup &amp; Data Recovery Hub</div>
+              <div style={{marginBottom:14,padding:"10px 14px",background:G(C.gn,0.07),borderRadius:8,border:`1px solid ${G(C.gn,0.2)}`}}>
+                <div style={{color:C.gn,fontWeight:700,fontSize:11,marginBottom:4}}>⚡ Persistent Synchronous Storage Active</div>
+                <div style={{color:C.si,fontSize:10}}>All transaction entries and master changes are instantly preserved across browser sessions, reloads, and logouts.</div>
               </div>
               <div style={{display:"flex",gap:8,flexDirection:"column"}}>
-                <Btn onClick={()=>{const meta={exportedAt:new Date().toISOString(),version:"v10",records:{sales:(data.sales||[]).length,purchases:(data.purchases||[]).length,dpr:(data.dpr||[]).length,vouchers:(data.vouchers||[]).length}};const blob=new Blob([JSON.stringify({meta,data,masters,settings},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="SiteLedger_v10_backup_"+(new Date().toISOString().slice(0,10))+"_"+(new Date().toISOString().slice(11,16).replace(":","-"))+".json";a.click();}} color={C.tl} icon="⬇" full>Export Full Backup (JSON)</Btn>
-                <label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"8px 16px",borderRadius:7,border:`1px solid ${C.bl}`,background:G(C.bl,0.1),color:C.bl,cursor:"pointer",fontFamily:"monospace",fontSize:11,fontWeight:700}}>
-                  <span>⬆</span> Import Backup (JSON)
-                  <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const b=JSON.parse(ev.target.result);if(b.data)setData(b.data);if(b.masters)setMasters(b.masters);if(b.settings){setSettings(b.settings);saveSettings(b.settings);}alert("Backup restored successfully!");}catch{alert("Invalid backup file.");}};r.readAsText(f);}}/>
-                </label>
-                <Btn onClick={()=>{if(window.confirm("Clear all transaction data? Masters will be kept."))setData(INIT_D);}} color={C.rd} icon="🗑" full>Reset Transaction Data</Btn>
+                <Btn onClick={()=>setShowBackupModal(true)} color={C.or} icon="🛡️" full>Open Backup &amp; Restore Center (5 Options)</Btn>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
+                  <Btn onClick={()=>{
+                    const meta={exportedAt:new Date().toISOString(),version:"v12",appName:"Site Ledger ERP"};
+                    const blob=new Blob([JSON.stringify({meta,data,masters,settings},null,2)],{type:"application/json"});
+                    const a=document.createElement("a");
+                    a.href=URL.createObjectURL(blob);
+                    a.download="SiteLedger_Backup_"+(new Date().toISOString().slice(0,10))+".json";
+                    a.click();
+                  }} color={C.tl} icon="⬇" full>JSON Backup</Btn>
+                  <Btn onClick={()=>{
+                    const lbl="Checkpoint "+(new Date().toLocaleTimeString());
+                    saveSnapshot(lbl,data,masters,settings);
+                    alert("📸 Checkpoint snapshot '"+lbl+"' saved in browser!");
+                  }} color={C.pu} icon="📸" full>Save Snapshot</Btn>
+                </div>
+                <Btn onClick={()=>{
+                  if(window.confirm("Clear all transactions? Your masters will be safely preserved.")) {
+                    saveSnapshot("Pre-reset backup",data,masters,settings);
+                    setData(INIT_D);
+                    persistData(INIT_D);
+                    alert("Transactions reset. Masters kept intact.");
+                  }
+                }} color={C.rd} icon="🗑" full>Reset Transactions (Keep Masters)</Btn>
               </div>
             </div>
           </div>
@@ -3946,6 +4651,20 @@ function Main({user,onLogout,settings,setSettings}){
     })()}
 
     {del&&<Confirm label={del.label||"this record"} onOk={doDelete} onNo={()=>setDel(null)}/>}
+
+    {showBackupModal && (
+      <BackupRestoreModal
+        isOpen={true}
+        onClose={()=>setShowBackupModal(false)}
+        data={data}
+        setData={setData}
+        masters={masters}
+        setMasters={setMasters}
+        settings={settings}
+        setSettings={setSettings}
+        user={user}
+      />
+    )}
 
     {/* ══ AI ASSISTANT DRAWER ══ */}
     {showAI && <div style={{position:"fixed", top:0, right:0, bottom:0, width:420, maxWidth:"90vw", background:"#091122", borderLeft:"1px solid "+G(C.tl,0.3), boxShadow:"-10px 0 40px rgba(0,0,0,0.7)", zIndex:200, display:"flex", flexDirection:"column"}}>
