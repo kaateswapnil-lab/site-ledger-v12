@@ -2,26 +2,35 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 
 /* ═══════════ DESIGN TOKENS ═══════════ */
-const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"monospace",fontSize:14,logoUrl:"",strictApproval:false};
+const DEF_SETTINGS={theme:"dark",accent:"#F59E0B",font:"sans",fontSize:13,logoUrl:"",strictApproval:false};
 const getSettings=()=>{try{return {...DEF_SETTINGS,...JSON.parse(localStorage.getItem("sl_settings")||"{}")};}catch{return DEF_SETTINGS;}};
 const saveSettings=s=>{try{localStorage.setItem("sl_settings",JSON.stringify(s));}catch(e){console.error(e);}};
-
 
 const mkColors=(accent,theme="dark")=>{
   const isLight=theme==="light";
   return {
-    or:accent,tl:isLight?"#0D9488":"#2DD4BF",rd:isLight?"#DC2626":"#F87171",pu:isLight?"#7C3AED":"#A78BFA",
-    gn:isLight?"#059669":"#34D399",dk:isLight?"#F8FAFC":"#060C1A",cd:isLight?"#FFFFFF":"#0E1628",br:isLight?"#CBD5E1":"#1E2D45",
-    gr:isLight?"#64748B":"#4B6180",bl:isLight?"#2563EB":"#60A5FA",si:isLight?"#475569":"#94A3B8",
-    bg1:isLight?"#F1F5F9":"#060C1A",bg2:isLight?"#F8FAFC":"#0A1223",bg3:isLight?"#FFFFFF":"#0E1628",
-    text:isLight?"#0F172A":"#E2E8F0",
-    textSub:isLight?"#475569":"#94A3B8",
+    or:accent||(isLight?"#D97706":"#F59E0B"),
+    tl:isLight?"#0D9488":"#14B8A6",
+    rd:isLight?"#DC2626":"#EF4444",
+    pu:isLight?"#7C3AED":"#8B5CF6",
+    gn:isLight?"#059669":"#10B981",
+    dk:isLight?"#F8FAFC":"#0B0F19",
+    cd:isLight?"#FFFFFF":"#111827",
+    br:isLight?"#E2E8F0":"#1F2937",
+    gr:isLight?"#64748B":"#6B7280",
+    bl:isLight?"#0284C7":"#0EA5E9",
+    si:isLight?"#475569":"#9CA3AF",
+    bg1:isLight?"#F8FAFC":"#0B0F19",
+    bg2:isLight?"#F1F5F9":"#111827",
+    bg3:isLight?"#FFFFFF":"#1F2937",
+    text:isLight?"#0F172A":"#F9FAFB",
+    textSub:isLight?"#475569":"#9CA3AF",
     isLight,
   };
 };
 let C=mkColors(DEF_SETTINGS.accent,DEF_SETTINGS.theme);
 const PC=[C.or,C.tl,C.rd,C.pu,C.gn,C.bl,"#FB923C","#E879F9"];
-const BD="1px solid #1E2D45";
+const BD="1px solid "+C.br;
 const G=(c,o=0.15)=>`rgba(${parseInt(c.slice(1,3),16)},${parseInt(c.slice(3,5),16)},${parseInt(c.slice(5,7),16)},${o})`;
 const INR=n=>"₹ "+Number(n||0).toLocaleString("en-IN");
 const uid=()=>"x"+Date.now()+Math.floor(Math.random()*9999);
@@ -211,6 +220,42 @@ const INIT_D={
     {id:"sd1",siteId:"s1",name:"Pier Reinforcement Drawing Rev-2.pdf",type:"PDF",date:"2025-01-15",size:"3.2 MB"},
     {id:"sd2",siteId:"s2",name:"Block A Foundation Soil Report.docx",type:"DOCX",date:"2025-01-20",size:"1.4 MB"}
   ],
+  jobOrders:[
+    {
+      id:"jo1",
+      joNo:"JO/001/25-26",
+      date:"2025-01-08",
+      soId:"so1",
+      siteId:"s1",
+      client:"NHAI",
+      jobName:"NH-48 Full Contract — Zone A Foundation",
+      specialInstructions:"Follow IS 456 concrete cover norms and wear safety harnesses on scaffolding.",
+      tasks:[
+        {id:"t1",name:"Foundation Work",unit:"SqM",soQty:5000,alreadyAllocated:0,qty:2500,maxQty:5000,soLineIdx:0,phase:"Foundation & Sub-Structure",estStartDate:"2025-01-10",estEndDate:"2025-03-31",matBudget:1350000,labBudget:750000,macBudget:300000},
+        {id:"t2",name:"Concrete Casting",unit:"CuM",soQty:500,alreadyAllocated:0,qty:250,maxQty:500,soLineIdx:1,phase:"Super Structure & RCC",estStartDate:"2025-02-01",estEndDate:"2025-04-15",matBudget:506250,labBudget:281250,macBudget:112500}
+      ]
+    }
+  ],
+  ccs:[
+    {
+      id:"ccs1",
+      ccsNo:"CCS/001/25-26",
+      date:"2025-01-12",
+      prId:"pr1",
+      prNo:"PR/001/25-26",
+      material:"TMT Fe500 12mm",
+      qty:20,
+      unit:"MT",
+      siteId:"s1",
+      status:"Evaluated",
+      quotes:[
+        {vendor:"Steel India Ltd",rate:56000,gst:18,landedRate:66080,deliveryDays:7,paymentTerms:"Credit 30d",pastRate:56000,rank:"L1",isL1:true,remarks:"Lowest bidder, test certificate verified"},
+        {vendor:"Tata Steel",rate:58500,gst:18,landedRate:69030,deliveryDays:5,paymentTerms:"Credit 45d",pastRate:58000,rank:"L2",isL1:false,remarks:"Reputed brand, higher price"}
+      ],
+      selectedVendor:"Steel India Ltd",
+      poId:"po1"
+    }
+  ],
 };
 
 /* ══════════ PERSISTENCE & STORAGE ENGINE ══════════ */
@@ -225,6 +270,8 @@ const loadData=()=>{
         merged[k]=INIT_D[k];
       }
     });
+    if(!merged.jobOrders||!merged.jobOrders.length) merged.jobOrders=INIT_D.jobOrders;
+    if(!merged.ccs||!merged.ccs.length) merged.ccs=INIT_D.ccs;
     return merged;
   }catch(e){
     console.error("Error loading sl_data:",e);
@@ -343,16 +390,16 @@ const genInv=(sale,co,cl,opts={})=>{
   const c=cS(sale);const n=v=>Number(v||0).toLocaleString("en-IN");
   const docType=opts.isProforma?"PROFORMA INVOICE":opts.isDebit?"DEBIT NOTE":opts.isEstimate?"QUOTATION":"TAX INVOICE";
   const docNo=sale.inv||sale.pfNo||sale.estNo||sale.dnNo||sale.qtnNo||"—";
-  const invTypeDesc=sale.invoiceType==="Final"?"Final Invoice":sale.invoiceType==="Supplementary"?"Supplementary Invoice":"Running Account";
+  const invTypeDesc=opts.isEstimate?(sale.status||"Draft"):sale.invoiceType==="Final"?"Final Invoice":sale.invoiceType==="Supplementary"?"Supplementary Invoice":"Running Account";
   
   /* Linked Order Info */
   const soObj=opts.soObj||null;
   const joObj=opts.joObj||null;
-  const siteDisplayName=opts.siteName||(sale.isConsultancy||(sale.desc||"").toLowerCase().includes("consultancy")?"Consultancy":"—");
-  const jobDisplayName=sale.jobName||(soObj?soObj.desc:"—");
-  const soInfoStr=soObj?(soObj.soNo||soObj.id)+" dt. "+fmtDate(soObj.date):sale.soId||"—";
-  const joInfoStr=joObj?(joObj.joNo||joObj.id)+" dt. "+fmtDate(joObj.date):sale.joId||sale.jobOrderId||"—";
-  const clientWOStr=(sale.clientWONo||"—")+(sale.clientWODate?" dt. "+fmtDate(sale.clientWODate):"");
+  const siteDisplayName=opts.siteName||(sale.siteId==="CONSULTANCY"?"Consultancy":(sale.isConsultancy||(sale.desc||"").toLowerCase().includes("consultancy")?"Consultancy":sale.siteId||"—"));
+  const jobDisplayName=sale.desc||sale.jobDesc||sale.jobName||(soObj?soObj.desc:"—");
+  const soInfoStr=soObj?(soObj.soNo||soObj.id)+" dt. "+fmtDate(soObj.date):sale.soId?sale.soId:(opts.isEstimate?"Pending":"—");
+  const joInfoStr=joObj?(joObj.joNo||joObj.id)+" dt. "+fmtDate(joObj.date):sale.joId||sale.jobOrderId?sale.joId||sale.jobOrderId:(opts.isEstimate?"Pending":"—");
+  const clientWOStr=sale.clientWONo?(sale.clientWONo+(sale.clientWODate?" dt. "+fmtDate(sale.clientWODate):"")):(opts.isEstimate?"Pending":"—");
 
   const liRows=(sale.lineItems||[{desc:sale.desc,hsn:"",qty:1,unit:"Lump",rate:sale.basic||0,gst:sale.gst||18,disc:0}]).map(it=>{
     const gr=(it.qty||0)*(it.rate||0),d=gr*(it.disc||0)/100,b=gr-d,g=b*(it.gst||0)/100;
@@ -363,7 +410,7 @@ const genInv=(sale,co,cl,opts={})=>{
   const badgeHtml="<span class=badge>"+invTypeDesc+"</span>";
   const discHtml=c.discount>0?("<div class=sr><span>Gross Value</span><span>Rs "+n(c.basic+c.discount)+"</span></div><div class=sr style=\"color:#34D399\"><span>Less: Discount</span><span>- Rs "+n(c.discount)+"</span></div>"):"";
   const netLabel=opts.isEstimate?"NET QUOTATION":opts.isProforma?"PROFORMA AMOUNT":"NET INVOICE VALUE";
-  const netAmt=c.gross; // Less TDS line removed as requested
+  const netAmt=c.gross;
   const amtWords="<div style=\"padding:8px 28px 4px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px\"><b>Amount in Words:</b> Rupees "+numWords(Math.round(netAmt))+"</div>";
 
   /* GST bifurcation */
@@ -371,25 +418,38 @@ const genInv=(sale,co,cl,opts={})=>{
   const gstRows=Object.values(hsnMap).map(function(r){return "<tr><td>"+r.hsn+"</td><td>"+r.desc+"</td><td style=\"text-align:right\">"+n(r.taxable)+"</td><td style=\"text-align:center\">"+r.gstRate+"%</td><td style=\"text-align:right\">"+n(r.cgst)+"</td><td style=\"text-align:right\">"+n(r.sgst)+"</td><td style=\"text-align:right\">"+n(r.cgst+r.sgst)+"</td></tr>";}).join("");
   const gstTable=(Object.keys(hsnMap).length>0)?("<div style=\"margin:0 28px 14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden\"><div style=\"background:#060C1A;color:#F59E0B;padding:7px 14px;font-size:10px;font-weight:700\">GST BIFURCATION (HSN/SAC WISE)</div><table style=\"width:100%;border-collapse:collapse;font-size:11px\"><thead><tr style=\"background:#f8fafc\"><th style=\"padding:5px 8px\">HSN/SAC</th><th style=\"padding:5px 8px\">Description</th><th style=\"padding:5px 8px;text-align:right\">Taxable</th><th style=\"padding:5px 8px;text-align:center\">Rate</th><th style=\"padding:5px 8px;text-align:right\">CGST</th><th style=\"padding:5px 8px;text-align:right\">SGST</th><th style=\"padding:5px 8px;text-align:right\">Total</th></tr></thead><tbody>"+gstRows+"</tbody></table></div>"):"";
 
-  /* Page 2 Running Account Abstract */
-  const abstractHtmlPage2=opts.soAbstract?("<div class=\"pg page2\" style=\"page-break-before:always;margin-top:20px\"><div class=hdr><div><h1>RUNNING ACCOUNT ABSTRACT</h1><p>Annexure to "+docType+": "+docNo+"</p></div><div style=\"text-align:right;color:#F59E0B;font-weight:700\">Page 2</div></div><div style=\"padding:24px 28px\"><table style=\"width:100%;border-collapse:collapse\"><thead><tr style=\"background:#060C1A\"><th style=\"padding:8px 10px;text-align:left;color:#F59E0B\">Item / Service</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">Estimated</th><th style=\"padding:8px 10px;text-align:right;color:#34D399\">Completed</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">Prev Billed</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">This Bill</th><th style=\"padding:8px 10px;text-align:right;color:#F87171\">Balance</th></tr></thead><tbody>"+opts.soAbstract.map(function(r){return "<tr><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9\">"+r.desc+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right\">"+r.estimated+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#34D399;font-weight:600\">"+r.completed+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right\">"+r.prevBilled+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700\">"+r.thisBill+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#F87171\">"+r.balance+" "+r.unit+"</td></tr>";}).join("")+"</tbody></table><div style=\"margin-top:24px;display:flex;justify-content:space-between;color:#64748b;font-size:11px\"><span>Prepared By Site Engineer</span><span>Approved By Client Representative</span></div></div></div>"):"";
+  /* Terms and Conditions */
+  const termsHtml=sale.terms?("<div style=\"padding:10px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px\"><b style=\"color:#0f172a\">Terms and Conditions:</b><p style=\"margin:4px 0 0;color:#475569;white-space:pre-wrap\">"+sale.terms+"</p></div>"):"";
+
+  /* Page 2 Detailed BOQ for Quotation */
+  const boqRows=(sale.lineItems||[]).map(function(it,idx){
+    const b=(it.qty||0)*(it.rate||0),d=b*(it.disc||0)/100,tx=b-d,g=tx*(it.gst||18)/100;
+    return "<tr><td style=\"text-align:center\">"+(idx+1)+"</td><td><b>"+(it.desc||it.item||"")+"</b><br><small style=\"color:#64748b\">As per standard construction specifications</small></td><td style=\"text-align:center\">"+(it.hsn||"—")+"</td><td style=\"text-align:right\"><b>"+it.qty+"</b></td><td style=\"text-align:center\">"+it.unit+"</td><td style=\"text-align:right\">Rs "+n(it.rate)+"</td><td style=\"text-align:right\">Rs "+n(tx)+"</td><td style=\"text-align:center\">"+it.gst+"%</td><td style=\"text-align:right;font-weight:700\">Rs "+n(tx+g)+"</td></tr>";
+  }).join("");
+
+  const boqHtmlPage2=opts.isEstimate?("<div class=\"pg page2\" style=\"page-break-before:always;margin-top:20px\"><div class=hdr><div><h1>DETAILED BILL OF QUANTITIES (BOQ)</h1><p>Annexure to Quotation: "+docNo+" | Date: "+fmtDate(sale.date)+"</p></div><div style=\"text-align:right;color:#F59E0B;font-weight:700\">Page 2 — Detailed BOQ</div></div><div style=\"padding:12px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px\"><div><b>Client:</b> "+(cl?cl.name:sale.client)+" | <b>Project:</b> "+siteDisplayName+"</div><div><b>Scope / Job:</b> "+jobDisplayName+"</div></div><div style=\"padding:16px 28px\"><table style=\"width:100%;border-collapse:collapse;font-size:11px\"><thead><tr style=\"background:#060C1A\"><th style=\"text-align:center;color:#F59E0B\">#</th><th style=\"color:#F59E0B\">Item & Scope Description</th><th style=\"text-align:center;color:#F59E0B\">HSN/SAC</th><th style=\"text-align:right;color:#F59E0B\">Qty</th><th style=\"text-align:center;color:#F59E0B\">Unit</th><th style=\"text-align:right;color:#F59E0B\">Rate</th><th style=\"text-align:right;color:#F59E0B\">Basic</th><th style=\"text-align:center;color:#F59E0B\">GST</th><th style=\"text-align:right;color:#F59E0B\">Total</th></tr></thead><tbody>"+boqRows+"</tbody><tfoot><tr style=\"background:#060C1A;color:#fff;font-weight:700\"><td colspan=6 style=\"text-align:right;color:#F59E0B\">Grand Total BOQ Value:</td><td style=\"text-align:right;color:#F59E0B\">Rs "+n(c.basic)+"</td><td style=\"text-align:center;color:#F59E0B\">—</td><td style=\"text-align:right;color:#F59E0B\">Rs "+n(c.gross)+"</td></tr></tfoot></table><div style=\"margin-top:36px;display:flex;justify-content:space-between;color:#64748b;font-size:11px;padding-top:16px;border-top:1px solid #e2e8f0\"><div>Prepared by Technical Estimator</div><div>Accepted &amp; Approved by Client</div></div></div></div>"):"";
+
+  /* Page 2 Running Account Abstract (for Invoices) */
+  const abstractHtmlPage2=(!opts.isEstimate&&opts.soAbstract)?("<div class=\"pg page2\" style=\"page-break-before:always;margin-top:20px\"><div class=hdr><div><h1>RUNNING ACCOUNT ABSTRACT</h1><p>Annexure to "+docType+": "+docNo+"</p></div><div style=\"text-align:right;color:#F59E0B;font-weight:700\">Page 2</div></div><div style=\"padding:24px 28px\"><table style=\"width:100%;border-collapse:collapse\"><thead><tr style=\"background:#060C1A\"><th style=\"padding:8px 10px;text-align:left;color:#F59E0B\">Item / Service</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">Estimated</th><th style=\"padding:8px 10px;text-align:right;color:#34D399\">Completed</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">Prev Billed</th><th style=\"padding:8px 10px;text-align:right;color:#F59E0B\">This Bill</th><th style=\"padding:8px 10px;text-align:right;color:#F87171\">Balance</th></tr></thead><tbody>"+opts.soAbstract.map(function(r){return "<tr><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9\">"+r.desc+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right\">"+r.estimated+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#34D399;font-weight:600\">"+r.completed+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right\">"+r.prevBilled+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:700\">"+r.thisBill+" "+r.unit+"</td><td style=\"padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:right;color:#F87171\">"+r.balance+" "+r.unit+"</td></tr>";}).join("")+"</tbody></table><div style=\"margin-top:24px;display:flex;justify-content:space-between;color:#64748b;font-size:11px\"><span>Prepared By Site Engineer</span><span>Approved By Client Representative</span></div></div></div>"):"";
 
   const css=".pg{max-width:920px;margin:0 auto 20px;border:2px solid #060C1A;font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff}.hdr{background:#060C1A;color:#F59E0B;padding:16px 28px;display:flex;justify-content:space-between;align-items:center}.hdr h1{margin:0;font-size:20px}.hdr p{margin:2px 0;color:#94A3B8;font-size:11px}.badge{background:#F59E0B;color:#060C1A;padding:4px 12px;border-radius:20px;font-weight:700;font-size:11px;display:inline-block;margin-top:4px}.meta{display:grid;grid-template-columns:repeat(4,1fr);padding:10px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;gap:12px}.meta h4{margin:0 0 2px;color:#64748b;font-size:9px;text-transform:uppercase}.meta p{margin:0;font-weight:600;font-size:11px}.doc-ref{display:grid;grid-template-columns:repeat(4,1fr);padding:8px 28px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;font-size:10px;gap:10px}.doc-ref div b{display:block;color:#060C1A;font-size:11px}.tf{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:12px 28px;border-bottom:1px solid #e2e8f0}.tf h4{color:#F59E0B;font-size:9px;text-transform:uppercase;margin:0 0 5px}table{width:100%;border-collapse:collapse}th{background:#060C1A;color:#F59E0B;padding:8px 12px;text-align:left;font-size:10px}td{padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:11px}.itbl{padding:0 28px 12px}.sum{display:flex;justify-content:flex-end;padding:10px 28px}.sb{width:340px}.sr{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid #f8fafc}.st{display:flex;justify-content:space-between;padding:10px 0;font-weight:700;font-size:16px;border-top:2px solid #060C1A;margin-top:4px}.bk{padding:12px 28px;background:#f8fafc;border-top:1px solid #e2e8f0}.bk h4{color:#F59E0B;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px}.bg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.bg label{display:block;color:#94a3b8;font-size:9px;text-transform:uppercase}.bg span{font-size:12px;font-weight:600}.ft{padding:12px 28px;display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8}.np{text-align:center;padding:18px;background:#f8fafc}@media print{.np{display:none}.page2{page-break-before:always}}";
 
   const html="<!DOCTYPE html><html><head><meta charset=utf-8><title>"+docType+" "+docNo+"</title><style>"+css+"</style></head><body><div class=pg>"+
     "<div class=hdr><div>"+logoHtml+"<h1>"+(co.name||"")+"</h1><p>"+(co.addr||"")+"</p><p>GST: "+(co.gst||"")+" | "+(co.phone||"")+"</p></div>"+
     "<div style=\"text-align:right\"><div style=\"font-size:11px;color:#94a3b8\">"+docType+"</div><div style=\"font-size:22px;font-weight:800;color:#F59E0B\">"+docNo+"</div>"+badgeHtml+"</div></div>"+
-    "<div class=meta><div><h4>Date</h4><p>"+fmtDate(sale.date)+"</p></div><div><h4>Invoice No</h4><p>"+docNo+"</p></div><div><h4>Invoice Type</h4><p>"+invTypeDesc+"</p></div><div><h4>Site / Project</h4><p>"+siteDisplayName+"</p></div></div>"+
+    "<div class=meta><div><h4>Date</h4><p>"+fmtDate(sale.date)+"</p></div><div><h4>"+(opts.isEstimate?"Quotation Number":"Invoice No")+"</h4><p>"+docNo+"</p></div><div><h4>"+(opts.isEstimate?"Quotation Type":"Invoice Type")+"</h4><p>"+invTypeDesc+"</p></div><div><h4>Site / Project</h4><p>"+siteDisplayName+"</p></div></div>"+
     "<div class=doc-ref><div><span>Client WO No / Date</span><b>"+clientWOStr+"</b></div><div><span>Name of Job</span><b>"+jobDisplayName+"</b></div><div><span>Our Sale Order</span><b>"+soInfoStr+"</b></div><div><span>Our Job Order</span><b>"+joInfoStr+"</b></div></div>"+
     "<div class=tf><div><h4>Bill To</h4><p style=\"font-size:14px;font-weight:700;margin:0 0 4px\">"+(cl?cl.name:sale.client)+"</p><p style=\"font-size:11px;color:#64748b;margin:0\">"+(cl?cl.billTo||cl.addr||"":"")+"</p><p style=\"font-size:10px;color:#94a3b8;margin:2px 0 0\">GST: "+(cl?cl.gst:"N/A")+"</p></div>"+
-    "<div><h4>Ship To / Site</h4><p style=\"font-size:11px;margin:0\">"+(cl?cl.shipTo||cl.addr||siteDisplayName:"")+"</p></div>"+
+    "<div><h4>Ship To / Destination</h4><p style=\"font-size:13px;font-weight:700;margin:0 0 2px\">"+(cl?cl.name:(sale.client||"—"))+"</p><p style=\"font-size:11px;color:#64748b;margin:0\">"+(cl?cl.shipTo||cl.billTo||cl.addr||siteDisplayName:siteDisplayName)+"</p><p style=\"font-size:10px;color:#94a3b8;margin:2px 0 0\">GST: "+(cl?cl.gst||"Unregistered / N/A":"N/A")+"</p></div>"+
     "<div><h4>Issued By</h4><p style=\"font-size:14px;font-weight:700;margin:0 0 4px\">"+co.name+"</p><p style=\"font-size:11px;color:#64748b;margin:0\">"+co.addr+"</p><p style=\"font-size:10px;color:#94a3b8;margin:2px 0 0\">GST: "+co.gst+"</p></div></div>"+
     "<div class=itbl><table><thead><tr><th>Description</th><th>HSN/SAC</th><th style=\"text-align:right\">Qty/Unit</th><th style=\"text-align:right\">Rate</th><th>Disc%</th><th style=\"text-align:right\">Basic</th><th>GST%</th><th style=\"text-align:right\">GST Amt</th><th style=\"text-align:right\">Total</th></tr></thead><tbody>"+liRows+"</tbody></table></div>"+
     "<div class=sum><div class=sb>"+discHtml+"<div class=sr><span>Taxable Value</span><span>Rs "+n(c.basic)+"</span></div><div class=sr><span>GST Amount</span><span>Rs "+n(c.g)+"</span></div><div class=sr><span>Gross Total</span><span>Rs "+n(c.gross)+"</span></div><div class=st><span>"+netLabel+"</span><span>Rs "+n(netAmt)+"</span></div></div></div>"+
     amtWords+
     gstTable+
+    termsHtml+
     "<div class=bk><h4>Bank Details for Payment</h4><div class=bg><div><label>Bank</label><span>"+co.bank+"</span></div><div><label>Account No</label><span>"+co.acc+"</span></div><div><label>IFSC</label><span>"+co.ifsc+"</span></div><div><label>Branch</label><span>"+co.branch+"</span></div></div></div>"+
     "<div class=ft><p>Subject to jurisdiction terms. Computer generated document.</p><div style=\"text-align:right\"><p style=\"margin:0\">For "+co.name+"</p><p style=\"margin:24px 0 0;border-top:1px solid #e2e8f0;padding-top:4px;font-size:10px\">Authorised Signatory</p></div></div></div>"+
+    boqHtmlPage2+
     abstractHtmlPage2+
     "<div class=np><button onclick=\"window.print()\" style=\"background:#F59E0B;color:#060C1A;border:none;padding:10px 28px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;margin-right:10px\">Print / Save PDF</button><button onclick=\"window.close()\" style=\"background:#e2e8f0;color:#333;border:none;padding:10px 20px;border-radius:6px;font-weight:700;cursor:pointer\">Close</button></div></body></html>";
   try{const blob=new Blob([html],{type:"text/html"});const url=URL.createObjectURL(blob);const w=window.open(url,"_blank","width=940,height=760");if(!w)alert("Allow popups for printing.");}catch(e){console.error(e);}
@@ -477,6 +537,64 @@ const genPOPrint=(po,co,vendor,opts={})=>{
   openPrint(html, "PO_"+(po.poNo||po.id));
 };
 
+const printCCS=(ccs,co,opts={})=>{
+  const n=v=>Number(v||0).toLocaleString("en-IN");
+  const quotes=ccs.quotes||[];
+  const quoteRows=quotes.map((q,idx)=>{
+    const isL1=q.rank==="L1"||q.isL1;
+    return `<tr style="${isL1?'background:#f0fdf4;font-weight:600':''}">
+      <td style="text-align:center">${idx+1}</td>
+      <td><b>${q.vendor}</b> ${isL1?'<span style="background:#10b981;color:#fff;padding:2px 6px;border-radius:12px;font-size:9px;margin-left:6px">⭐ L1 Best</span>':''}</td>
+      <td style="text-align:right">₹${n(q.rate)}</td>
+      <td style="text-align:center">${q.gst||18}%</td>
+      <td style="text-align:right;color:${isL1?'#059669':'#0f172a'};font-weight:700">₹${n(q.landedRate||Math.round(q.rate*(1+(q.gst||18)/100)))}</td>
+      <td style="text-align:center">${q.deliveryDays||"—"} Days</td>
+      <td style="text-align:center">${q.paymentTerms||"—"}</td>
+      <td style="text-align:right;color:#64748b">₹${n(q.pastRate||0)}</td>
+      <td style="text-align:center"><span style="padding:2px 8px;border-radius:4px;font-weight:700;background:${isL1?'#dcfce7;color:#15803d':'#f1f5f9;color:#475569'}">${q.rank||("L"+(idx+1))}</span></td>
+      <td style="font-size:10px;color:#64748b">${q.remarks||"—"}</td>
+    </tr>`;
+  }).join("");
+
+  const html=`<!DOCTYPE html><html><head><meta charset=utf-8><title>Commercial Comparison - ${ccs.ccsNo||ccs.id}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;margin:0;padding:24px;background:#f8fafc}
+    .page{max-width:960px;margin:0 auto;background:#fff;padding:32px;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.06)}
+    table{width:100%;border-collapse:collapse;margin:16px 0;font-size:11px}
+    th{background:#0f172a;color:#f8fafc;padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase}
+    td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+    .hdr{display:flex;justify-content:space-between;border-bottom:2px solid #f59e0b;padding-bottom:12px;margin-bottom:14px}
+    @media print{.noprint{display:none}body{background:#fff;padding:0}.page{border:none;box-shadow:none;padding:12px}}
+  </style></head><body>
+  <div class=page>
+    <div class=hdr>
+      <div><h2 style="margin:0;color:#0f172a">${co.name||""}</h2><p style="margin:2px 0;color:#64748b;font-size:11px">${co.addr||""}<br>GSTIN: <b>${co.gst||""}</b></p></div>
+      <div style="text-align:right"><h3 style="margin:0;color:#f59e0b;font-size:16px">COMMERCIAL COMPARISON SHEET (CCS)</h3><p style="margin:4px 0;font-family:monospace;font-weight:700;font-size:13px">${ccs.ccsNo||ccs.id}</p><p style="margin:0;color:#64748b">Date: ${ccs.date||new Date().toISOString().slice(0,10)}</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:#f8fafc;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;font-size:11px">
+      <div><b style="color:#64748b;font-size:10px;text-transform:uppercase">PR Reference:</b><div style="font-weight:700;margin-top:2px">${ccs.prNo||ccs.prId||"—"}</div></div>
+      <div><b style="color:#64748b;font-size:10px;text-transform:uppercase">Material / Scope:</b><div style="font-weight:700;margin-top:2px">${ccs.material||"—"}</div></div>
+      <div><b style="color:#64748b;font-size:10px;text-transform:uppercase">Requisition Qty:</b><div style="font-weight:700;margin-top:2px;color:#d97706">${ccs.qty} ${ccs.unit||""}</div></div>
+      <div><b style="color:#64748b;font-size:10px;text-transform:uppercase">Recommended L1:</b><div style="font-weight:700;margin-top:2px;color:#059669">${ccs.selectedVendor||(quotes.find(q=>q.rank==="L1"||q.isL1)||{}).vendor||"—"}</div></div>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Vendor / Bidder</th><th style="text-align:right">Quoted Rate</th><th style="text-align:center">GST%</th><th style="text-align:right">Landed Rate</th><th style="text-align:center">Delivery</th><th style="text-align:center">Payment Terms</th><th style="text-align:right">Past Rate</th><th style="text-align:center">Rank</th><th>Remarks & Terms</th></tr></thead>
+      <tbody>${quoteRows}</tbody>
+    </table>
+    <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;color:#166534;margin-top:14px">
+      💡 <b>Procurement Recommendation:</b> Vendor <b>${ccs.selectedVendor||(quotes.find(q=>q.rank==="L1"||q.isL1)||{}).vendor||"L1 Bidder"}</b> is recommended for issuing Purchase Order based on lowest landed cost evaluation, compliance with PR delivery schedule, and past rate benchmarking.
+    </div>
+    <div style="margin-top:36px;display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#475569">
+      <div>Prepared By: Procurement Officer<br><small style="color:#94a3b8">Date: ${ccs.date||""}</small></div>
+      <div>Verified By: Purchase Manager<br><small style="color:#94a3b8">Rate Verification: Confirmed</small></div>
+      <div>Approved By: Project Director<br><small style="color:#94a3b8">Status: Sanctioned for PO</small></div>
+    </div>
+  </div>
+  <div class=noprint style="text-align:center;padding:16px"><button onclick="window.print()" style="background:#f59e0b;color:#000;border:none;padding:10px 28px;border-radius:6px;font-weight:700;cursor:pointer">Print / Save PDF</button></div>
+  </body></html>`;
+  openPrint(html, "CCS_"+(ccs.ccsNo||ccs.id));
+};
+
 const printGRN=(mr,co,opts={})=>{
   const n=v=>Number(v||0).toLocaleString("en-IN");
   const html=`<!DOCTYPE html><html><head><meta charset=utf-8><title>Goods Receipt Note - ${mr.grnNo||mr.id}</title>
@@ -537,6 +655,434 @@ const printStockTransfer=(st,co,opts={})=>{
   openPrint(html, "Transfer_"+st.id);
 };
 
+/* ══════════ DPR PRINT GENERATOR ══════════ */
+const genDPRPrint=(dpr,co,opts={})=>{
+  const cats = dpr.workerCats || {};
+  const catRows = Object.entries(cats).filter(([_,qty])=>Number(qty)>0).map(([k,qty])=>`
+    <div style="background:#f1f5f9;padding:6px 12px;border-radius:4px;border:1px solid #e2e8f0;font-size:11px">
+      <span style="color:#64748b;text-transform:capitalize">${k}:</span> <b>${qty}</b>
+    </div>
+  `).join("") || `<div style="color:#64748b;font-size:11px">Total Workers: ${dpr.workers||0}</div>`;
+
+  const workRows = (dpr.entries||[]).map((e,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${e.name||"—"}</b></td>
+      <td style="text-transform:capitalize">${e.type||"Service"}</td>
+      <td style="text-align:right;font-weight:700;color:#059669">${e.completedQty||0} ${e.unit||""}</td>
+      <td>${e.remarks||"—"}</td>
+    </tr>
+  `).join("");
+
+  const matRows = (dpr.consumedItems||[]).map((ci,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${ci.item||"—"}</b></td>
+      <td style="text-align:right;font-weight:700">${ci.qty||0} ${ci.unit||""}</td>
+      <td style="text-transform:capitalize">${ci.locType||"Site"}</td>
+    </tr>
+  `).join("");
+
+  const accidentPhotos = (dpr.accidentImages||[]).map(img=>`
+    <img src="${img}" style="max-height:120px;border-radius:6px;border:1px solid #cbd5e1;margin-right:8px;margin-bottom:8px;object-fit:cover"/>
+  `).join("");
+
+  const sitePhotos = (dpr.images||[]).map(img=>`
+    <img src="${img}" style="max-height:120px;border-radius:6px;border:1px solid #cbd5e1;margin-right:8px;margin-bottom:8px;object-fit:cover"/>
+  `).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>DPR - ${dpr.date} - ${opts.siteName||""}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;margin:0;padding:24px;background:#f8fafc}
+    .page{max-width:880px;margin:0 auto;background:#fff;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e2e8f0;border-radius:8px}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px}
+    th{background:#0f172a;color:#f8fafc;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}
+    td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
+    .hdr{display:flex;justify-content:space-between;border-bottom:2px solid #0284c7;padding-bottom:12px;margin-bottom:14px}
+    @media print{.noprint{display:none}body{background:#fff;padding:0}.page{box-shadow:none;border:none;margin:0;padding:20px}}
+  </style></head><body>
+  <div class=page>
+    <div class=hdr>
+      <div>
+        <h2 style="margin:0;color:#0f172a;font-size:20px">${co.name||"Site Ledger"}</h2>
+        <p style="margin:2px 0;color:#64748b;font-size:11px">${co.addr||""}<br>GSTIN: <b>${co.gst||""}</b></p>
+      </div>
+      <div style="text-align:right">
+        <h3 style="margin:0;color:#0284c7;font-size:16px">DAILY PROGRESS REPORT (DPR)</h3>
+        <p style="margin:4px 0;font-weight:700">Date: ${dpr.date}</p>
+        <p style="margin:0;color:#64748b;font-size:11px">Weather: <b>${dpr.weather||"Clear"}</b></p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#f8fafc;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px">
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Project / Site Details</b>
+        <div style="font-size:13px;font-weight:700;margin-top:2px">${opts.siteName||"—"}</div>
+        <div style="color:#475569;font-size:11px">Job Order: <b>${opts.joNo||dpr.jobOrderId||"—"}</b></div>
+        <div style="color:#475569;font-size:11px">Client: <b>${opts.clientName||"—"}</b></div>
+      </div>
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Field Supervision</b>
+        <div style="font-size:13px;font-weight:700;margin-top:2px">Supervisor: ${dpr.supervisor||"—"}</div>
+        <div style="color:#475569;font-size:11px">Total Site Workers: <b style="color:#0284c7;font-size:13px">${dpr.workers||0}</b></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#334155;text-transform:uppercase;margin-bottom:6px">👷 Worker Deployment (Category-wise)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${catRows}
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#334155;text-transform:uppercase;margin-bottom:4px">📋 Works Executed Today</div>
+      <table>
+        <thead><tr><th>#</th><th>Task / Work Description</th><th>Type</th><th style="text-align:right">Executed Qty</th><th>Remarks</th></tr></thead>
+        <tbody>${workRows || "<tr><td colspan=5 style='text-align:center;color:#94a3b8'>No task entries recorded</td></tr>"}</tbody>
+      </table>
+    </div>
+
+    ${matRows?`
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#334155;text-transform:uppercase;margin-bottom:4px">📦 Materials Consumed on Site</div>
+      <table>
+        <thead><tr><th>#</th><th>Material</th><th style="text-align:right">Consumed Qty</th><th>Source</th></tr></thead>
+        <tbody>${matRows}</tbody>
+      </table>
+    </div>`:""}
+
+    ${dpr.clientInstructions?`
+    <div style="margin-bottom:12px;padding:10px 14px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;font-size:11px;color:#92400e">
+      <b>📌 Client / Engineer Instructions:</b> ${dpr.clientInstructions}
+    </div>`:""}
+
+    ${dpr.remarks?`
+    <div style="margin-bottom:12px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;color:#475569">
+      <b>📝 General Remarks:</b> ${dpr.remarks}
+    </div>`:""}
+
+    ${dpr.hasAccident?`
+    <div style="margin-bottom:14px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b">
+      <div style="font-weight:700;font-size:12px;margin-bottom:4px">🚨 Site Incident / Accident Report</div>
+      <div style="font-size:11px;margin-bottom:4px"><b>Severity:</b> ${dpr.accidentSeverity||"Minor"} | <b>Workers Involved:</b> ${dpr.accidentWorkers||"—"}</div>
+      <div style="font-size:11px;margin-bottom:8px"><b>Details:</b> ${dpr.accidentDesc||"—"}</div>
+      ${accidentPhotos?`<div><b style="font-size:10px;text-transform:uppercase;color:#b91c1c">Accident Photos:</b><br><div style="margin-top:6px;display:flex;flex-wrap:wrap">${accidentPhotos}</div></div>`:""}
+    </div>`:""}
+
+    ${sitePhotos?`
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#334155;text-transform:uppercase;margin-bottom:6px">📷 Site Photos</div>
+      <div style="display:flex;flex-wrap:wrap">${sitePhotos}</div>
+    </div>`:""}
+
+    <div style="margin-top:36px;display:flex;justify-content:space-between;padding-top:14px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b">
+      <div style="text-align:center"><div style="height:35px"></div>Site Supervisor</div>
+      <div style="text-align:center"><div style="height:35px"></div>Project Manager</div>
+      <div style="text-align:center"><div style="height:35px"></div>Client Representative</div>
+    </div>
+  </div>
+
+  <div class=noprint style="text-align:center;padding:16px"><button onclick="window.print()" style="background:#0284c7;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-weight:700;cursor:pointer;margin-right:10px">Print / Save PDF</button><button onclick="window.close()" style="background:#e2e8f0;border:none;padding:10px 20px;border-radius:6px;font-weight:700;cursor:pointer">Close</button></div>
+  </body></html>`;
+
+  openPrint(html, "DPR_"+dpr.date);
+};
+
+/* ══════════ CONFIDENTIAL COST & PROFIT SHEET GENERATOR ══════════ */
+const genConfidentialCostSheet=(qtn,co,opts={})=>{
+  const n=v=>Number(v||0).toLocaleString("en-IN");
+  const c=cS(qtn);
+  const revenue = c.basic || 0;
+  const bbsEntries = qtn.bbsEntries || [];
+  const totalRebarKg = bbsEntries.reduce((a,b)=>a+(Number(b.totalKg)||0),0);
+  const totalRebarMT = (totalRebarKg/1000).toFixed(3);
+  const steelRatePerMT = 56000;
+  const rebarCost = (totalRebarKg/1000)*steelRatePerMT;
+  
+  const matCost = Math.round(revenue * 0.45) + Math.round(rebarCost);
+  const labCost = Math.round(revenue * 0.25);
+  const macCost = Math.round(revenue * 0.10);
+  const overheadCost = Math.round(revenue * 0.05);
+  const totalDirectCost = matCost + labCost + macCost + overheadCost;
+  const grossProfit = Math.max(0, revenue - totalDirectCost);
+  const profitMarginPct = revenue ? ((grossProfit / revenue) * 100).toFixed(1) : "0.0";
+
+  const bbsRows = bbsEntries.map((b,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${b.barMark||"—"}</b> (${b.element||"Element"})</td>
+      <td style="text-align:center">${b.dia||12} mm</td>
+      <td style="text-align:center">${b.shape||"Straight"}</td>
+      <td style="text-align:right">${b.numBars||1} × ${b.numMembers||1}</td>
+      <td style="text-align:right">${Number(b.cutLength||0).toFixed(3)} m</td>
+      <td style="text-align:right;font-weight:700;color:#0284c7">${Number(b.totalKg||0).toFixed(1)} kg</td>
+    </tr>
+  `).join("") || "<tr><td colspan=7 style='text-align:center;color:#94a3b8'>No BBS schedules recorded</td></tr>";
+
+  const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Confidential Cost Sheet - ${qtn.estNo||qtn.qtnNo||qtn.id}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;margin:0;padding:24px;background:#f8fafc}
+    .page{max-width:880px;margin:0 auto;background:#fff;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #cbd5e1;border-radius:8px}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px}
+    th{background:#0f172a;color:#f8fafc;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}
+    td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
+    .conf-banner{background:#b91c1c;color:#fff;padding:8px 14px;border-radius:6px;font-weight:700;font-size:11px;text-align:center;letter-spacing:1px;margin-bottom:16px}
+    @media print{.noprint{display:none}body{background:#fff;padding:0}.page{box-shadow:none;border:none;margin:0;padding:20px}}
+  </style></head><body>
+  <div class=page>
+    <div class=conf-banner>🔒 STRICTLY CONFIDENTIAL — FOR INTERNAL MANAGEMENT &amp; OWNER REVIEW ONLY</div>
+    
+    <div style="display:flex;justify-content:space-between;border-bottom:2px solid #b91c1c;padding-bottom:12px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0;color:#0f172a;font-size:20px">${co.name||"Site Ledger"}</h2>
+        <p style="margin:2px 0;color:#64748b;font-size:11px">${co.addr||""}<br>Internal Profit &amp; Cost Analysis Document</p>
+      </div>
+      <div style="text-align:right">
+        <h3 style="margin:0;color:#b91c1c;font-size:16px">COST &amp; PROFIT PROJECTION</h3>
+        <p style="margin:4px 0;font-weight:700">Ref: ${qtn.estNo||qtn.qtnNo||qtn.id}</p>
+        <p style="margin:0;color:#64748b;font-size:11px">Date: ${qtn.date}</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#f8fafc;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:16px">
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Client & Project Target</b>
+        <div style="font-size:13px;font-weight:700;margin-top:2px">${qtn.client||"—"}</div>
+        <div style="color:#475569;font-size:11px">Site: <b>${opts.siteName||"—"}</b></div>
+        <div style="color:#475569;font-size:11px">Job Scope: <b>${qtn.desc||"—"}</b></div>
+      </div>
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Target Profitability</b>
+        <div style="font-size:18px;font-weight:800;color:#059669;margin-top:2px">₹${n(grossProfit)} <span style="font-size:12px;color:#166534">(${profitMarginPct}% Margin)</span></div>
+        <div style="color:#475569;font-size:11px">Total Contract Quoted: <b>₹${n(revenue)}</b></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-weight:700;font-size:11px;color:#0f172a;text-transform:uppercase;margin-bottom:6px">📊 Cost Analysis &amp; Profit Summary</div>
+      <table>
+        <thead><tr><th>Component</th><th style="text-align:center">Percentage</th><th style="text-align:right">Budget Amount (₹)</th><th>Remarks</th></tr></thead>
+        <tbody>
+          <tr><td><b>Total Quoted Revenue (Basic)</b></td><td style="text-align:center">100.0%</td><td style="text-align:right;font-weight:700">₹${n(revenue)}</td><td style="color:#64748b">Client Billing Value</td></tr>
+          <tr><td>Material Budget (BOM & Steel)</td><td style="text-align:center">~45%</td><td style="text-align:right;color:#0284c7">₹${n(matCost)}</td><td style="color:#64748b">Includes Rebar Steel @ ₹${n(steelRatePerMT)}/MT</td></tr>
+          <tr><td>Labour & Subcontract Budget</td><td style="text-align:center">~25%</td><td style="text-align:right;color:#7c3aed">₹${n(labCost)}</td><td style="color:#64748b">Direct skilled & unskilled site wages</td></tr>
+          <tr><td>Machinery & Equipment Hire</td><td style="text-align:center">~10%</td><td style="text-align:right;color:#ea580c">₹${n(macCost)}</td><td style="color:#64748b">Fuel, hiring, maintenance</td></tr>
+          <tr><td>Site Overheads & Safety Contingency</td><td style="text-align:center">~5%</td><td style="text-align:right;color:#475569">₹${n(overheadCost)}</td><td style="color:#64748b">Site office, electricity, insurance</td></tr>
+          <tr style="background:#f1f5f9;font-weight:700"><td>Total Projected Direct Cost</td><td style="text-align:center">${revenue?((totalDirectCost/revenue)*100).toFixed(1):0}%</td><td style="text-align:right;color:#dc2626">₹${n(totalDirectCost)}</td><td>Base Execution Cost</td></tr>
+          <tr style="background:#f0fdf4;font-weight:700;font-size:13px"><td style="color:#166534">Projected Net Gross Profit</td><td style="text-align:center;color:#166534">${profitMarginPct}%</td><td style="text-align:right;color:#166534">₹${n(grossProfit)}</td><td style="color:#166534">Executive Clearance Target</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-weight:700;font-size:11px;color:#0f172a;text-transform:uppercase;margin-bottom:4px">🔩 Bar Bending Schedule (BBS) Reinforcement Summary</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:6px">Total Steel Weight: <b>${totalRebarKg.toFixed(1)} kg (${totalRebarMT} MT)</b> | Projected Rebar Cost: <b>₹${n(rebarCost)}</b></div>
+      <table>
+        <thead><tr><th>#</th><th>Bar Mark & Element</th><th style="text-align:center">Dia</th><th style="text-align:center">Shape</th><th style="text-align:right">Total Bars</th><th style="text-align:right">Cut Length</th><th style="text-align:right">Total Weight</th></tr></thead>
+        <tbody>${bbsRows}</tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:36px;display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b">
+      <div><b>Prepared by:</b> Cost Estimator</div>
+      <div><b>Reviewed by:</b> Project Manager</div>
+      <div><b>Approved by:</b> Managing Director / Owner</div>
+    </div>
+  </div>
+
+  <div class=noprint style="text-align:center;padding:16px"><button onclick="window.print()" style="background:#b91c1c;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-weight:700;cursor:pointer;margin-right:10px">Print / Save Confidential PDF</button><button onclick="window.close()" style="background:#e2e8f0;border:none;padding:10px 20px;border-radius:6px;font-weight:700;cursor:pointer">Close</button></div>
+  </body></html>`;
+
+  openPrint(html, "CostSheet_"+(qtn.estNo||qtn.qtnNo||qtn.id));
+};
+
+/* ══════════ JOB ORDER 2-PAGE PRINT GENERATOR ══════════ */
+const genJOPrint=(jo,co,opts={})=>{
+  const n=v=>Number(v||0).toLocaleString("en-IN");
+  const so = opts.so || {};
+  const tasks = jo.tasks || [];
+  const totalMat = tasks.reduce((a,t)=>a+(Number(t.matBudget)||0),0);
+  const totalLab = tasks.reduce((a,t)=>a+(Number(t.labBudget)||0),0);
+  const totalMac = tasks.reduce((a,t)=>a+(Number(t.macBudget)||0),0);
+  const grandTotal = totalMat + totalLab + totalMac;
+
+  const page1TaskRows = tasks.map((t,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><b>${t.name||"—"}</b></td>
+      <td>${t.phase||"General"}</td>
+      <td style="text-align:right;font-weight:700">${t.qty||1} ${t.unit||""}</td>
+      <td style="text-align:center">${t.estStartDate||"—"}</td>
+      <td style="text-align:center">${t.estEndDate||"—"}</td>
+      <td style="text-align:right">₹${n(t.matBudget)}</td>
+      <td style="text-align:right">₹${n(t.labBudget)}</td>
+      <td style="text-align:right">₹${n(t.macBudget)}</td>
+      <td style="text-align:right;font-weight:700">₹${n((Number(t.matBudget)||0)+(Number(t.labBudget)||0)+(Number(t.macBudget)||0))}</td>
+    </tr>
+  `).join("");
+
+  const wbsTaskRows = tasks.map((t,i)=>{
+    const qty = Number(t.qty)||1;
+    const cementBags = Math.round(qty * 3.5);
+    const sandCft = Math.round(qty * 7.5);
+    const aggCft = Math.round(qty * 14);
+    const steelKg = Math.round(qty * 18);
+    const masonDays = (qty * 0.4).toFixed(1);
+    const carpenterDays = (qty * 0.25).toFixed(1);
+    const helperDays = (qty * 1.2).toFixed(1);
+    const mixerHours = (qty * 0.5).toFixed(1);
+    const vibratorHours = (qty * 0.4).toFixed(1);
+
+    return `
+      <tr>
+        <td style="font-weight:700">${i+1}. ${t.name}</td>
+        <td style="text-align:right;font-weight:700">${qty} ${t.unit||""}</td>
+        <td>${t.estStartDate||"—"} to ${t.estEndDate||"—"}</td>
+        <td style="font-size:10px">Cement: <b>${cementBags} bags</b><br>Sand: <b>${sandCft} cft</b><br>Agg: <b>${aggCft} cft</b><br>Steel: <b>${steelKg} kg</b></td>
+        <td style="font-size:10px">Mason: <b>${masonDays} d</b><br>Carpenter: <b>${carpenterDays} d</b><br>Helper: <b>${helperDays} d</b></td>
+        <td style="font-size:10px">Mixer: <b>${mixerHours} hrs</b><br>Vibrator: <b>${vibratorHours} hrs</b></td>
+      </tr>
+    `;
+  }).join("");
+
+  const html = `<!DOCTYPE html><html><head><meta charset=utf-8><title>Job Order - ${jo.joNo||jo.id}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;margin:0;padding:24px;background:#f8fafc}
+    .page{max-width:900px;margin:0 auto 30px;background:#fff;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #e2e8f0;border-radius:8px}
+    .page2{page-break-before:always;margin-top:30px}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:11px}
+    th{background:#0f172a;color:#f8fafc;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase}
+    td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
+    .hdr{display:flex;justify-content:space-between;border-bottom:2px solid #7c3aed;padding-bottom:12px;margin-bottom:14px}
+    @media print{.noprint{display:none}body{background:#fff;padding:0}.page{box-shadow:none;border:none;margin:0;padding:20px}}
+  </style></head><body>
+  <div class=page>
+    <div class=hdr>
+      <div>
+        <h2 style="margin:0;color:#0f172a;font-size:20px">${co.name||"Site Ledger"}</h2>
+        <p style="margin:2px 0;color:#64748b;font-size:11px">${co.addr||""}<br>GSTIN: <b>${co.gst||""}</b></p>
+      </div>
+      <div style="text-align:right">
+        <h3 style="margin:0;color:#7c3aed;font-size:16px">PROJECT JOB ORDER</h3>
+        <p style="margin:4px 0;font-family:monospace;font-weight:700;font-size:14px">${jo.joNo||jo.id}</p>
+        <p style="margin:0;color:#64748b;font-size:11px">Date: ${jo.date}</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#f8fafc;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px">
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Project & Site</b>
+        <div style="font-size:13px;font-weight:700;margin-top:2px">${opts.siteName||"—"}</div>
+        <div style="color:#475569;font-size:11px">Client: <b>${opts.clientName||so.client||"—"}</b></div>
+        <div style="color:#475569;font-size:11px">Sale Order Ref: <b>${so.soNo||jo.soId||"—"}</b></div>
+      </div>
+      <div>
+        <b style="color:#64748b;font-size:10px;text-transform:uppercase">Budgets Summary</b>
+        <div style="font-size:16px;font-weight:800;color:#7c3aed;margin-top:2px">₹${n(grandTotal)}</div>
+        <div style="color:#475569;font-size:11px">Mat: <b>₹${n(totalMat)}</b> | Lab: <b>₹${n(totalLab)}</b> | Mac: <b>₹${n(totalMac)}</b></div>
+      </div>
+    </div>
+
+    ${jo.specialInstructions?`
+    <div style="margin-bottom:12px;padding:10px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;font-size:11px;color:#5b21b6">
+      <b>📌 Special Instructions / Guidelines:</b> ${jo.specialInstructions}
+    </div>`:""}
+
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#0f172a;text-transform:uppercase;margin-bottom:4px">📋 Task Breakdown &amp; Budgets</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Task Description</th>
+            <th>Phase</th>
+            <th style="text-align:right">Exec Qty</th>
+            <th style="text-align:center">Start</th>
+            <th style="text-align:center">End</th>
+            <th style="text-align:right">Mat (₹)</th>
+            <th style="text-align:right">Lab (₹)</th>
+            <th style="text-align:right">Mac (₹)</th>
+            <th style="text-align:right">Total (₹)</th>
+          </tr>
+        </thead>
+        <tbody>${page1TaskRows}</tbody>
+        <tfoot>
+          <tr style="background:#0f172a;color:#fff;font-weight:700">
+            <td colspan=6 style="text-align:right;color:#a78bfa">Total Budget:</td>
+            <td style="text-align:right">₹${n(totalMat)}</td>
+            <td style="text-align:right">₹${n(totalLab)}</td>
+            <td style="text-align:right">₹${n(totalMac)}</td>
+            <td style="text-align:right;color:#a78bfa">₹${n(grandTotal)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="margin-top:36px;display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b">
+      <div>Project In-charge</div>
+      <div>Site Engineer</div>
+      <div>Managing Director</div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: WORK BREAKDOWN STRUCTURE (WBS) -->
+  <div class="page page2">
+    <div class=hdr>
+      <div>
+        <h2 style="margin:0;color:#0f172a;font-size:18px">WORK BREAKDOWN STRUCTURE (WBS)</h2>
+        <p style="margin:2px 0;color:#64748b;font-size:11px">Detailed Engineering &amp; Resource Breakdown — Job Order: <b>${jo.joNo||jo.id}</b></p>
+      </div>
+      <div style="text-align:right;color:#7c3aed;font-weight:700">Page 2 — WBS Analysis</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:#f8fafc;padding:10px 14px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;font-size:11px">
+      <div>
+        <div><b>Name of Job:</b> ${so.desc||opts.jobName||"—"}</div>
+        <div><b>Client Details:</b> ${opts.clientName||so.client||"—"} (${opts.clientGst||"—"})</div>
+        <div><b>Site Details:</b> ${opts.siteName||"—"}</div>
+      </div>
+      <div>
+        <div><b>Our Job Order No. &amp; Date:</b> ${jo.joNo||jo.id} dt. ${jo.date}</div>
+        <div><b>Client Work Order No. &amp; Date:</b> ${so.clientWONo||"Pending"} ${so.clientWODate?"dt. "+so.clientWODate:""}</div>
+        <div><b>Sale Order Ref:</b> ${so.soNo||jo.soId||"—"}</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:11px;color:#0f172a;text-transform:uppercase;margin-bottom:4px">🏗 BOQ, BOM &amp; Resource Quantity Estimation</div>
+      <table>
+        <thead>
+          <tr>
+            <th>BOQ Task Item</th>
+            <th style="text-align:right">BOQ Qty</th>
+            <th>Duration</th>
+            <th>BOM Material Est. (Calculated)</th>
+            <th>Labour Estimation (Man-Days)</th>
+            <th>Machinery Estimation (Hours)</th>
+          </tr>
+        </thead>
+        <tbody>${wbsTaskRows}</tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:20px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px">
+      <b>BBS Reinforcement Drawings &amp; Schedules:</b> As detailed in linked Quotation / Sale Order schedule. All rebar cutting &amp; bending strictly in accordance with IS:2502 code of practice.
+    </div>
+
+    <div style="margin-top:36px;display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b">
+      <div>Planning Engineer</div>
+      <div>Project Manager</div>
+      <div>Quality Assurance Lead</div>
+    </div>
+  </div>
+
+  <div class=noprint style="text-align:center;padding:16px"><button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;padding:10px 28px;border-radius:6px;font-weight:700;cursor:pointer;margin-right:10px">Print 2-Page Job Order</button><button onclick="window.close()" style="background:#e2e8f0;border:none;padding:10px 20px;border-radius:6px;font-weight:700;cursor:pointer">Close</button></div>
+  </body></html>`;
+
+  openPrint(html, "JobOrder_"+(jo.joNo||jo.id));
+};
+
 const downloadDocx=(filename="Site_Ledger_Report.docx",htmlContent="")=>{
   const header="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><title>Document</title><style>body{font-family:Calibri,Arial;font-size:11pt;margin:1in}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:6px}</style></head><body>";
   const footer="</body></html>";
@@ -556,13 +1102,13 @@ const downloadPptx=(filename="Site_Ledger_Presentation.html",slidesHtml="")=>{
 
 /* ══════════ DESIGN SYSTEM ══════════ */
 const ss={
-  card:{background:C.cd,borderRadius:12,border:BD,boxShadow:"0 4px 24px rgba(0,0,0,.3)"},
-  th:{padding:"14px 16px",color:"#FFFFFF",fontSize:13,fontFamily:"monospace",fontWeight:800,textAlign:"left",borderBottom:"2px solid #1E2D45",borderRight:"1px solid #1E2D45",whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:1,background:"linear-gradient(180deg,#162236,#0E1628)"},
-  td:{padding:"14px 16px",fontSize:14,color:"#FFFFFF",borderBottom:"1px solid #1E2D45",borderRight:"1px solid #1E2D45",lineHeight:1.6,fontWeight:600},
-  inp:{background:"#060C1A",border:"1px solid #1E2D45",borderRadius:8,color:"#FFFFFF",padding:"12px 14px",fontSize:14,width:"100%",marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"monospace",transition:"all .2s"},
-  lbl:{display:"block",color:"#E2E8F0",fontSize:12,fontFamily:"monospace",marginBottom:4,letterSpacing:1,textTransform:"uppercase",fontWeight:700},
+  card:{background:C.cd,borderRadius:10,border:BD,boxShadow:C.isLight?"0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)":"0 4px 20px rgba(0,0,0,.35)"},
+  th:{padding:"10px 12px",color:C.isLight?"#0F172A":"#F8FAFC",fontSize:11,fontFamily:"inherit",fontWeight:700,textAlign:"left",borderBottom:"2px solid "+C.br,borderRight:"1px solid "+C.br,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:0.5,background:C.isLight?"#F1F5F9":"#162032"},
+  td:{padding:"9px 12px",fontSize:12,color:C.text,borderBottom:"1px solid "+C.br,borderRight:"1px solid "+C.br,lineHeight:1.5,fontWeight:500},
+  inp:{background:C.isLight?"#FFFFFF":"#0B0F19",border:"1px solid "+C.br,borderRadius:6,color:C.text,padding:"8px 10px",fontSize:12,width:"100%",marginBottom:8,outline:"none",boxSizing:"border-box",fontFamily:"inherit",transition:"border-color .15s"},
+  lbl:{display:"block",color:C.textSub,fontSize:10,fontFamily:"inherit",marginBottom:3,letterSpacing:0.5,textTransform:"uppercase",fontWeight:700},
 };
-const TT={background:"#0A1223",border:BD,borderRadius:8,fontSize:11,color:"#E2E8F0"};
+const TT={background:C.isLight?"#FFFFFF":"#0A1223",border:BD,borderRadius:8,fontSize:11,color:C.text};
 
 function Tag({c,ch}){const m={g:["rgba(52,211,153,.1)","#34D399","rgba(52,211,153,.25)"],r:["rgba(248,113,113,.1)","#F87171","rgba(248,113,113,.25)"],o:["rgba(245,158,11,.1)","#F59E0B","rgba(245,158,11,.25)"],p:["rgba(167,139,250,.1)","#A78BFA","rgba(167,139,250,.25)"],b:["rgba(96,165,250,.1)","#60A5FA","rgba(96,165,250,.25)"],t:["rgba(45,212,191,.1)","#2DD4BF","rgba(45,212,191,.25)"]};const[bg,fg,bo]=m[c]||m.o;return <span style={{background:bg,color:fg,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:600,whiteSpace:"nowrap",border:"1px solid "+bo,fontFamily:"monospace"}}>{ch}</span>;}
 function Btn({onClick,color,children,sm,full,disabled,icon}){return <button onClick={onClick} disabled={disabled} style={{background:disabled?"rgba(30,45,69,.5)":color?G(color,0.9):G(C.or,0.9),color:disabled?C.gr:color?"white":C.dk,border:"1px solid "+(disabled?"#1E2D45":color||C.or),borderRadius:7,padding:sm?"3px 10px":"8px 16px",fontWeight:700,fontSize:sm?10:11,cursor:disabled?"not-allowed":"pointer",whiteSpace:"nowrap",width:full?"100%":undefined,fontFamily:"monospace",display:"inline-flex",alignItems:"center",gap:4,justifyContent:"center",transition:"all .15s"}}>{icon&&<span>{icon}</span>}{children}</button>;}
@@ -654,7 +1200,7 @@ function MiniCalendar(){
   </div>;
 }
 
-function Login({onLogin, onOpenRestore}){
+function Login({onLogin}){
   const[u,setU]=useState("");
   const[p,setP]=useState("");
   const[err,setErr]=useState("");
@@ -665,7 +1211,7 @@ function Login({onLogin, onOpenRestore}){
     if(usr) onLogin(usr);
     else setErr("Invalid credentials");
   };
-  return <div style={{minHeight:"100vh",background:`radial-gradient(ellipse at 20% 50%,#0F1D33,${C.dk})`,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 2px 2px,rgba(96,165,250,.04) 1px,transparent 0)",backgroundSize:"32px 32px",pointerEvents:"none"}}/><div style={{...ss.card,padding:44,width:400,textAlign:"center",boxShadow:"0 32px 80px rgba(0,0,0,.7)",position:"relative",background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{position:"absolute",top:-1,left:"50%",transform:"translateX(-50%)",width:"60%",height:2,background:"linear-gradient(90deg,transparent,#F59E0B,transparent)",borderRadius:2}}/><div style={{width:64,height:64,background:"linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.05))",borderRadius:16,border:"1px solid rgba(245,158,11,.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:30}}>🏗</div><div style={{color:C.or,fontFamily:"monospace",fontWeight:800,fontSize:26,letterSpacing:4,marginBottom:4}}>SITE LEDGER</div><div style={{color:"#334155",fontSize:11,marginBottom:32,letterSpacing:1}}>v12 — Civil Contractor ERP</div><div style={{textAlign:"left",background:"#060C1A",borderRadius:10,padding:16,border:BD}}><F label="Username"><Inp val={u} onChange={setU} placeholder="Username"/></F><F label="Password"><input type="password" style={{...ss.inp,marginBottom:0}} value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Password"/></F></div>{err&&<div style={{color:C.rd,fontSize:11,margin:"10px 0",padding:"8px 12px",background:"rgba(248,113,113,.08)",borderRadius:7,border:"1px solid rgba(248,113,113,.2)"}}>{err}</div>}<div style={{marginTop:14}}><Btn full onClick={go}>LOGIN →</Btn></div><div style={{marginTop:18,textAlign:"center"}}><button onClick={onOpenRestore} style={{background:"none",border:"none",color:C.tl,cursor:"pointer",fontSize:11,fontFamily:"monospace",textDecoration:"underline",opacity:0.85}}>🔄 Disaster Recovery / Restore Backup</button></div></div></div>;
+  return <div style={{minHeight:"100vh",background:`radial-gradient(ellipse at 20% 50%,#0F1D33,${C.dk})`,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{position:"absolute",inset:0,backgroundImage:"radial-gradient(circle at 2px 2px,rgba(96,165,250,.04) 1px,transparent 0)",backgroundSize:"32px 32px",pointerEvents:"none"}}/><div style={{...ss.card,padding:44,width:400,textAlign:"center",boxShadow:"0 32px 80px rgba(0,0,0,.7)",position:"relative",background:"linear-gradient(135deg,#0E1628,#0A1223)"}}><div style={{position:"absolute",top:-1,left:"50%",transform:"translateX(-50%)",width:"60%",height:2,background:"linear-gradient(90deg,transparent,#F59E0B,transparent)",borderRadius:2}}/><div style={{width:64,height:64,background:"linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.05))",borderRadius:16,border:"1px solid rgba(245,158,11,.3)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:30}}>🏗</div><div style={{color:C.or,fontFamily:"monospace",fontWeight:800,fontSize:26,letterSpacing:4,marginBottom:4}}>SITE LEDGER</div><div style={{color:"#334155",fontSize:11,marginBottom:32,letterSpacing:1}}>v12 — Civil Contractor ERP</div><div style={{textAlign:"left",background:"#060C1A",borderRadius:10,padding:16,border:BD}}><F label="Username"><Inp val={u} onChange={setU} placeholder="Username"/></F><F label="Password"><input type="password" style={{...ss.inp,marginBottom:0}} value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Password"/></F></div>{err&&<div style={{color:C.rd,fontSize:11,margin:"10px 0",padding:"8px 12px",background:"rgba(248,113,113,.08)",borderRadius:7,border:"1px solid rgba(248,113,113,.2)"}}>{err}</div>}<div style={{marginTop:14}}><Btn full onClick={go}>LOGIN →</Btn></div></div></div>;
 }
 
 const INIT_WC=[
@@ -1179,25 +1725,7 @@ export default function App(){
     setUser(null);
   };
 
-  if(!user) return (
-    <>
-      <Login onLogin={handleLogin} onOpenRestore={()=>setShowEmergencyRestore(true)}/>
-      {showEmergencyRestore && (
-        <BackupRestoreModal
-          isOpen={true}
-          onClose={()=>setShowEmergencyRestore(false)}
-          data={loadData()||INIT_D}
-          setData={(d)=>{ persistData(d); }}
-          masters={loadMasters()||INIT_M}
-          setMasters={(m)=>{ persistMasters(m); }}
-          settings={settings}
-          setSettings={(s)=>{ setSettings(s); saveSettings(s); }}
-          isEmergency={true}
-          user={{role:"Admin",name:"Disaster Recovery"}}
-        />
-      )}
-    </>
-  );
+  if(!user) return <Login onLogin={handleLogin}/>;
 
   return <Main user={user} onLogout={handleLogout} settings={settings} setSettings={v=>{setSettings(v);saveSettings(v);}}/>;
 };
@@ -1222,9 +1750,13 @@ function Main({user,onLogout,settings,setSettings}){
   C=mkColors(settings.accent||DEF_SETTINGS.accent, settings.theme||DEF_SETTINGS.theme);
   const[site,setSite]=useState("ALL");
   const[tab,setTab]=useState("dash");
-  const[salesSub,setSalesSub]=useState("inv");
+  const[salesSub,setSalesSub]=useState("jo");
   const[dprSub,setDprSub]=useState("dpr");
-  const[purchSub,setPurchSub]=useState("bills");
+  const[purchSub,setPurchSub]=useState("pr");
+  const[showSoRecon,setShowSoRecon]=useState(false);
+  const[viewJo,setViewJo]=useState(null);
+  const[viewPr,setViewPr]=useState(null);
+  const[viewCcs,setViewCcs]=useState(null);
   const[hrSub,setHrSub]=useState("att");
   const[invSub,setInvSub]=useState("stock");
   const[accSub,setAccSub]=useState("vouchers");
@@ -1253,6 +1785,8 @@ function Main({user,onLogout,settings,setSettings}){
   const[modal,setModal]=useState(null);
   const[form,setForm]=useState({});
   const[del,setDel]=useState(null);
+  const[editTds,setEditTds]=useState(null);
+  const[viewDoc,setViewDoc]=useState(null);
   const[ledEnt,setLedEnt]=useState("client");
   const[ledName,setLedName]=useState("NHAI");
   const[fSt,setFSt]=useState("All");
@@ -1336,7 +1870,8 @@ function Main({user,onLogout,settings,setSettings}){
       vouchers:{field:"vNo",prefix:extra&&extra.vtype==="in"?"VCI":"VCO",arr:data.vouchers},
       jo:{field:"joNo",prefix:"JO",arr:data.jobOrders},
       pr:{field:"prNo",prefix:"PR",arr:data.purchaseRequisitions},
-      matreceipt:{field:"grnNo",prefix:"GRN",arr:data.materialReceipts},
+      ccs:{field:"ccsNo",prefix:"CCS",arr:data.ccs},
+      matreceipt:{field:"grnNo",prefix:extra&&extra.docType==="SRN"?"SRN":"GRN",arr:data.materialReceipts},
     };
     const dn=docNums[mod];
     const base2={gst:18,tds:2,days:26,siteId:site==="ALL"?"":site,via:"bank",accountId:(masters.banks[0]||{}).id||"",lineItems:[{desc:"",item:"",hsn:"",qty:1,unit:"",rate:0,gst:18,disc:0}]};
@@ -1351,7 +1886,7 @@ function Main({user,onLogout,settings,setSettings}){
   const doDelete=()=>{if(del.isM)delM(del.key,del.idx);else delRec(del.key,del.id);setDel(null);};
   const saveM=(key,item)=>{if(checkApproval(modal.oidx!=null?"edit":"add","master",key,item,modal.oidx))return;updM(key,arr=>modal.oidx!=null?arr.map((x,i)=>i===modal.oidx?{...item,id:x.id}:x):[...arr,{...item,id:uid()}]);};
 
-  const fData=useMemo(()=>{if(site==="ALL")return data;const f={};["sales","saleOrders","purchases","purchaseOrders","expenses","payroll","attendance","dpr","materialReceipts","estimates","proforma","debitNotes","creditNotes","jobOrders","purchaseRequisitions","issues","siteDocs","otherIncome","transfers"].forEach(k=>{f[k]=(data[k]||[]).filter(x=>!x.siteId||x.siteId===site);});return{...data,...f};},[data,site]);
+  const fData=useMemo(()=>{if(site==="ALL")return data;const f={};["sales","saleOrders","purchases","purchaseOrders","expenses","payroll","attendance","dpr","materialReceipts","estimates","proforma","debitNotes","creditNotes","jobOrders","purchaseRequisitions","issues","siteDocs","otherIncome","transfers","ccs"].forEach(k=>{f[k]=(data[k]||[]).filter(x=>!x.siteId||x.siteId===site);});return{...data,...f};},[data,site]);
   const rData=useMemo(()=>{const filt=(arr,dk="date")=>(arr||[]).filter(x=>inPeriod(x[dk],rpFrom,rpTo));return{sales:filt(fData.sales),purchases:filt(fData.purchases),expenses:filt(fData.expenses),payroll:filt(fData.payroll,"month"),vouchers:filt(data.vouchers),bankTxns:filt(data.bankTxns),pettyTxns:filt(data.pettyTxns),debitNotes:filt(fData.debitNotes||[]),creditNotes:filt(fData.creditNotes||[])};},[fData,data,rpFrom,rpTo]);
 
   const sName=id=>{if(id==="CONSULTANCY")return"Consultancy";if(id==="OFFICE")return"Head Office";if(id==="GODOWN")return"Godown";return(masters.sites.find(s=>s.id===id)||{}).name||id||"—";};
@@ -1377,10 +1912,56 @@ function Main({user,onLogout,settings,setSettings}){
 
   /* Convert Sale Order → pre-filled Invoice */
   const convertSoToInv=so=>{
-    const invNo="INV-"+(String((data.sales||[]).length+1).padStart(3,"0"));
+    const invNo=nextDocNo("INV", data.sales||[], "inv");
     const today=new Date().toISOString().slice(0,10);
     setForm({date:today,inv:invNo,siteId:so.siteId,soId:so.id,client:so.client,tds:so.tds||2,desc:so.desc,lineItems:(so.lineItems||[]).map(li=>({...li,disc:0}))});
     setModal({t:"txn",mod:"sales"});
+  };
+
+  /* Convert Sale Order → Job Order with quantity cap (Prompt 7m) */
+  const convertSoToJo=so=>{
+    const existingJOs = (data.jobOrders||[]).filter(j=>j.soId===so.id);
+    const tasks = (so.lineItems||[]).map((li, idx)=>{
+      const alreadyAlloc = existingJOs.flatMap(j=>j.tasks||[]).filter(t=>t.soLineIdx===idx).reduce((a,b)=>a+(Number(b.qty)||0),0);
+      const soQty = Number(li.qty)||0;
+      const remainingQty = Math.max(0, soQty - alreadyAlloc);
+      const unitRate = Number(li.rate)||0;
+      const basicVal = remainingQty * unitRate;
+      return {
+        id: uid() + idx,
+        name: li.desc || li.item || ("Task " + (idx+1)),
+        unit: li.unit || "Nos",
+        soQty,
+        alreadyAllocated: alreadyAlloc,
+        qty: remainingQty,
+        maxQty: remainingQty,
+        soLineIdx: idx,
+        phase: "Site Preparation",
+        estStartDate: new Date().toISOString().slice(0,10),
+        estEndDate: "",
+        matBudget: Math.round(basicVal * 0.45),
+        labBudget: Math.round(basicVal * 0.25),
+        macBudget: Math.round(basicVal * 0.10)
+      };
+    });
+
+    const availableTasks = tasks.filter(t=>t.maxQty > 0);
+    if(availableTasks.length === 0) {
+      return alert("All line item quantities for Sale Order " + (so.soNo||so.id) + " have already been 100% allocated to existing Job Orders.");
+    }
+
+    const newJoNo = nextDocNo("JO", data.jobOrders||[], "joNo");
+    setForm({
+      date: new Date().toISOString().slice(0,10),
+      joNo: newJoNo,
+      soId: so.id,
+      siteId: so.siteId,
+      client: so.client,
+      jobName: so.desc,
+      tasks: availableTasks,
+      specialInstructions: ""
+    });
+    setModal({t:"txn", mod:"jo"});
   };
 
   /* Open direct bank debit/credit modal */
@@ -1485,7 +2066,6 @@ function Main({user,onLogout,settings,setSettings}){
   const SITE_LIST=[
     {id:"ALL",name:"All Sites"},
     {id:"OFFICE",name:"🏢 Head Office"},
-    {id:"CONSULTANCY",name:"🎓 Consultancy"},
     ...masters.sites.map(s=>({id:s.id,name:s.name}))
   ];
   const siteOpts=[{v:"",l:"Select Site"},{v:"CONSULTANCY",l:"🎓 Consultancy"},{v:"OFFICE",l:"🏢 Head Office"},{v:"GODOWN",l:"🏭 Godown"},...masters.sites.map(s=>({v:s.id,l:s.name}))];
@@ -1519,8 +2099,8 @@ function Main({user,onLogout,settings,setSettings}){
   const printDayBook=()=>{const trs=dayBookEntries.map(e=>"<tr><td style=\"padding:5px 8px;border-bottom:1px solid #f1f5f9\">"+e.module+"</td><td>"+e.party+"</td><td>"+e.desc+"</td><td style=\"color:"+(e.type==="income"?"#34D399":"#F87171")+";font-weight:600\">"+(e.type==="income"?"IN":"OUT")+"</td><td style=\"text-align:right;font-weight:700\">"+INR(e.amt)+"</td></tr>").join("");const ths=["Module","Party","Description","Flow","Amount"].map(h=>"<th style=\"padding:7px 10px;text-align:left\">"+h+"</th>").join("");genGenericPrint("Day Book — "+dbDate,"<table style=\"width:100%;border-collapse:collapse\"><thead><tr style=\"background:#060C1A;color:#F59E0B\">"+ths+"</tr></thead><tbody>"+trs+"</tbody></table>",co);};
 
   /* ══════════════════ RENDER ══════════════════ */
-  const fStyle=settings.font==="sans"?"Arial,sans-serif":settings.font==="serif"?"Georgia,serif":"'Courier New',monospace";
-  return <div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column",background:C.bg1,color:"#E2E8F0",fontFamily:fStyle,fontSize:settings.fontSize||12}}>
+  const fStyle=settings.font==="sans"?"'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif":settings.font==="serif"?"Georgia,serif":"'Courier New',monospace";
+  return <div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column",background:C.bg1,color:C.text,fontFamily:fStyle,fontSize:settings.fontSize||12}}>
     {/* TOP BAR */}
     <div style={{background:C.isLight?"linear-gradient(90deg,#FFFFFF,#F8FAFC)":"linear-gradient(90deg,#060C1A,#0A1223)",borderBottom:"1px solid "+C.br,padding:"0 20px",display:"flex",alignItems:"center",gap:12,height:56,position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(0,0,0,.15)"}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:38,height:38,background:`linear-gradient(135deg,${G(C.or,0.2)},${G(C.or,0.05)})`,borderRadius:9,border:`1px solid ${G(C.or,0.3)}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🏗</div><div><div style={{color:C.or,fontWeight:800,fontSize:15,letterSpacing:3,lineHeight:1}}>SITE LEDGER</div><div style={{color:C.gr,fontSize:9,letterSpacing:1}}>CIVIL ERP v12</div></div></div>
@@ -1539,11 +2119,6 @@ function Main({user,onLogout,settings,setSettings}){
       {/* AI Assistant Pill */}
       <button onClick={()=>setShowAI(!showAI)} title="Open Site Ledger AI Assistant" style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+C.tl,background:G(C.tl,0.12),color:C.tl,cursor:"pointer",fontSize:12,fontFamily:"monospace",fontWeight:700,display:"flex",alignItems:"center",gap:6,boxShadow:"0 0 12px "+G(C.tl,0.3)}}>
         <span>✨ AI Assistant</span>
-      </button>
-
-      {/* Backup & Restore Pill */}
-      <button onClick={()=>setShowBackupModal(true)} title="Backup & Restore Data (Multiple Options)" style={{padding:"6px 14px",borderRadius:20,border:"1px solid "+C.bl,background:G(C.bl,0.12),color:C.bl,cursor:"pointer",fontSize:12,fontFamily:"monospace",fontWeight:700,display:"flex",alignItems:"center",gap:6,boxShadow:"0 0 12px "+G(C.bl,0.2)}}>
-        <span>💾 Backup / Restore</span>
       </button>
 
       <div style={{width:1,background:C.br,height:26}}/>
@@ -1894,89 +2469,67 @@ function Main({user,onLogout,settings,setSettings}){
           </div>
         </div>}
 
-        {/* ══ DPR (Punched against Job Order | Issues & Accidents | GANTT Chart) ══ */}
+        {/* ══ DPR (Punched against Job Order | GANTT Chart | Issues & Accidents) ══ */}
         {tab==="dpr"&&<div>
-          <SubTabs val={dprSub} onChange={setDprSub} tabs={[{v:"dpr",l:"DPR Entries",icon:"📋"},{v:"issues",l:"Issues & Accidents",icon:"⚠️"},{v:"gantt",l:"GANTT Chart",icon:"📊"}]}/>
+          <SubTabs val={dprSub} onChange={setDprSub} tabs={[{v:"dpr",l:"DPR Entries",icon:"📋"},{v:"gantt",l:"GANTT Chart",icon:"📊"},{v:"issues",l:"Issues & Accidents",icon:"⚠️"}]}/>
           
           {dprSub==="dpr"&&<div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
               <Sel val={dprSite} onChange={setDprSite} opts={[{v:"all",l:"All Sites"},...masters.sites.map(s=>({v:s.id,l:s.name}))]}/>
               <Btn onClick={()=>openAdd("dpr")} color={C.bl} icon="＋">Add DPR (against Job Order)</Btn>
             </div>
-            {(data.dpr||[]).filter(d=>dprSite==="all"||d.siteId===dprSite).map((d,di)=>{const jo=(data.jobOrders||[]).find(j=>j.id===d.jobOrderId);const so=jo?(data.saleOrders||[]).find(s=>s.id===jo.soId):(data.saleOrders||[]).find(s=>s.id===d.soId);return(
-              <div key={di} style={{...ss.card,marginBottom:14,overflow:"hidden"}}>
-                <div style={{padding:"10px 16px",borderBottom:BD,display:"flex",justifyContent:"space-between",alignItems:"center",background:G(C.bl,0.06)}}>
-                  <div>
-                    <span style={{color:C.or,fontWeight:700,fontSize:12}}>DPR — {d.date}</span>
-                    <span style={{color:C.gr,fontSize:10,marginLeft:10}}>{sName(d.siteId)}</span>
-                    {jo&&<span style={{color:C.pu,fontSize:10,marginLeft:10}}>JO: <b>{jo.joNo}</b></span>}
-                    {so&&<span style={{color:C.tl,fontSize:10,marginLeft:10}}>SO: {so.desc}</span>}
-                    {d.hasAccident&&<span style={{background:"rgba(248,113,113,.2)",color:C.rd,padding:"2px 8px",borderRadius:4,fontSize:9,fontWeight:700,marginLeft:8}}>🚨 ACCIDENT REPORTED</span>}
+            {(data.dpr||[]).filter(d=>dprSite==="all"||d.siteId===dprSite).map((d,di)=>{
+              const jo=(data.jobOrders||[]).find(j=>j.id===d.jobOrderId);
+              const so=jo?(data.saleOrders||[]).find(s=>s.id===jo.soId):(data.saleOrders||[]).find(s=>s.id===d.soId);
+              const catBreakdown = d.workerCats ? Object.entries(d.workerCats).filter(([_,v])=>Number(v)>0).map(([k,v])=>`${k.charAt(0).toUpperCase()+k.slice(1)}: ${v}`).join(" | ") : "";
+              return(
+                <div key={di} style={{...ss.card,marginBottom:14,overflow:"hidden"}}>
+                  <div style={{padding:"10px 16px",borderBottom:BD,display:"flex",justifyContent:"space-between",alignItems:"center",background:G(C.bl,0.06)}}>
+                    <div>
+                      <span style={{color:C.or,fontWeight:700,fontSize:12}}>DPR — {d.date}</span>
+                      <span style={{color:C.gr,fontSize:10,marginLeft:10}}>{sName(d.siteId)}</span>
+                      {jo&&<span style={{color:C.pu,fontSize:10,marginLeft:10}}>JO: <b>{jo.joNo}</b></span>}
+                      {so&&<span style={{color:C.tl,fontSize:10,marginLeft:10}}>SO: {so.desc}</span>}
+                      {d.hasAccident&&<span style={{background:"rgba(248,113,113,.2)",color:C.rd,padding:"2px 8px",borderRadius:4,fontSize:9,fontWeight:700,marginLeft:8}}>🚨 ACCIDENT REPORTED</span>}
+                    </div>
+                    <div style={{display:"flex",gap:12,fontSize:10}}>
+                      <span style={{color:C.si}}>Supervisor: <b style={{color:C.pu}}>{d.supervisor}</b></span>
+                      <span style={{color:C.si}}>Workers: <b style={{color:C.tl}}>{d.workers||0}</b>{catBreakdown ? <span style={{color:C.gr,marginLeft:4}}>({catBreakdown})</span> : ""}</span>
+                      <span style={{color:C.si}}>Weather: <span style={{color:C.bl}}>{d.weather}</span></span>
+                    </div>
                   </div>
-                  <div style={{display:"flex",gap:12,fontSize:10}}><span style={{color:C.si}}>Supervisor: <b style={{color:C.pu}}>{d.supervisor}</b></span><span style={{color:C.si}}>Workers: <b style={{color:C.tl}}>{d.workers}</b></span><span style={{color:C.si}}>Weather: <span style={{color:C.bl}}>{d.weather}</span></span></div>
+                  {d.hasAccident&&<div style={{padding:"8px 16px",background:"rgba(248,113,113,.08)",borderBottom:BD,fontSize:11,color:C.rd}}>
+                    <b>Incident details:</b> {d.accidentSeverity||"Incident"} — {d.accidentDesc||"—"} (Workers: {d.accidentWorkers||"—"})
+                    {d.accidentImages&&d.accidentImages.length>0&&<div style={{display:"flex",gap:8,marginTop:6,flexWrap:"wrap"}}>
+                      {d.accidentImages.map((img,idx)=><img key={idx} src={img} style={{height:48,borderRadius:4,objectFit:"cover",border:"1px solid "+C.rd,cursor:"pointer"}} onClick={()=>window.open(img,"_blank")}/>)}
+                    </div>}
+                  </div>}
+                  {d.clientInstructions&&<div style={{padding:"7px 16px",background:G(C.or,0.05),borderBottom:BD,fontSize:11}}><span style={{color:C.or,fontWeight:700}}>📌 Client Instructions: </span><span style={{color:"#CBD5E1"}}>{d.clientInstructions}</span></div>}
+                  <table style={{borderCollapse:"collapse",width:"100%",fontSize:11}}>
+                    <thead><tr style={{background:"#060C1A"}}><th style={ss.th}>Type</th><th style={ss.th}>Item / Service</th><th style={ss.th}>Completed Qty</th><th style={ss.th}>Unit</th><th style={ss.th}>Remarks</th></tr></thead>
+                    <tbody>{(d.entries||[]).map((e,i)=><tr key={i}><td style={ss.td}><Tag c={e.type==="service"?"b":"o"} ch={e.type}/></td><td style={ss.td}>{e.name}</td><td style={{...ss.td,color:C.gn,fontWeight:700}}>{e.completedQty}</td><td style={ss.td}>{e.unit}</td><td style={{...ss.td,color:C.gr}}>{e.remarks}</td></tr>)}</tbody>
+                  </table>
+                  {d.jobOrderId&&jo&&<div style={{padding:"8px 16px",borderTop:BD,background:G(C.tl,0.04)}}>
+                    <div style={{color:C.tl,fontSize:10,fontWeight:700,marginBottom:6,letterSpacing:1}}>JOB ORDER PROGRESS TRACKER</div>
+                    {getJoProgress(d.jobOrderId).map((p,i)=>{const pct=p.estimated?Math.min(100,Math.round(p.completed/p.estimated*100)):0;return <div key={i} style={{marginBottom:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}><span style={{color:C.si}}>{p.desc}</span><span style={{color:C.gr}}>Est: {p.estimated} {p.unit} | Done: <b style={{color:C.gn}}>{p.completed}</b> | Balance: <b style={{color:C.rd}}>{p.balance}</b></span></div>
+                      <div style={{height:5,background:"#0A1223",borderRadius:3}}><div style={{height:"100%",width:pct+"%",background:`linear-gradient(90deg,${C.tl},${G(C.tl,0.5)})`,borderRadius:3}}/></div>
+                      <div style={{color:"#1E2D45",fontSize:9,marginTop:1}}>{pct}% complete</div>
+                    </div>;})}
+                  </div>}
+                  {d.remarks&&<div style={{padding:"7px 16px",fontSize:11,color:"#4B6180",borderTop:BD}}>📝 {d.remarks}</div>}
+                  {(d.images||[]).length>0&&<div style={{padding:"8px 16px",borderTop:BD,display:"flex",gap:8,flexWrap:"wrap"}}>{d.images.map((img,i)=><img key={i} src={img} style={{height:64,borderRadius:6,objectFit:"cover",border:"1px solid "+C.br,cursor:"pointer"}} onClick={()=>window.open(img,"_blank")}/>)}</div>}
+                  <div style={{padding:"8px 16px",borderTop:BD,display:"flex",gap:6,justifyContent:"flex-end"}}>
+                    <button onClick={()=>genDPRPrint(d, co, {siteName:sName(d.siteId), joNo:jo?.joNo, clientName:so?.client})} style={{padding:"4px 12px",borderRadius:6,border:"1px solid rgba(2,132,199,.4)",background:"rgba(2,132,199,.12)",color:C.bl,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨 Print DPR</button>
+                    <button onClick={()=>openEdit("dpr",d)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>✎ Edit DPR</button>
+                    <button onClick={()=>setDel({key:"dpr",id:d.id,label:"DPR — "+d.date})} style={{padding:"4px 12px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🗑 Delete</button>
+                  </div>
                 </div>
-                {d.hasAccident&&<div style={{padding:"8px 16px",background:"rgba(248,113,113,.08)",borderBottom:BD,fontSize:11,color:C.rd}}>
-                  <b>Incident details:</b> {d.accidentSeverity||"Incident"} — {d.accidentDesc||"—"} (Workers: {d.accidentWorkers||"—"})
-                </div>}
-                {d.clientInstructions&&<div style={{padding:"7px 16px",background:G(C.or,0.05),borderBottom:BD,fontSize:11}}><span style={{color:C.or,fontWeight:700}}>📌 Client Instructions: </span><span style={{color:"#CBD5E1"}}>{d.clientInstructions}</span></div>}
-                <table style={{borderCollapse:"collapse",width:"100%",fontSize:11}}>
-                  <thead><tr style={{background:"#060C1A"}}><th style={ss.th}>Type</th><th style={ss.th}>Item / Service</th><th style={ss.th}>Completed Qty</th><th style={ss.th}>Unit</th><th style={ss.th}>Remarks</th></tr></thead>
-                  <tbody>{(d.entries||[]).map((e,i)=><tr key={i}><td style={ss.td}><Tag c={e.type==="service"?"b":"o"} ch={e.type}/></td><td style={ss.td}>{e.name}</td><td style={{...ss.td,color:C.gn,fontWeight:700}}>{e.completedQty}</td><td style={ss.td}>{e.unit}</td><td style={{...ss.td,color:C.gr}}>{e.remarks}</td></tr>)}</tbody>
-                </table>
-                {d.jobOrderId&&jo&&<div style={{padding:"8px 16px",borderTop:BD,background:G(C.tl,0.04)}}>
-                  <div style={{color:C.tl,fontSize:10,fontWeight:700,marginBottom:6,letterSpacing:1}}>JOB ORDER PROGRESS TRACKER</div>
-                  {getJoProgress(d.jobOrderId).map((p,i)=>{const pct=p.estimated?Math.min(100,Math.round(p.completed/p.estimated*100)):0;return <div key={i} style={{marginBottom:8}}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}><span style={{color:C.si}}>{p.desc}</span><span style={{color:C.gr}}>Est: {p.estimated} {p.unit} | Done: <b style={{color:C.gn}}>{p.completed}</b> | Balance: <b style={{color:C.rd}}>{p.balance}</b></span></div>
-                    <div style={{height:5,background:"#0A1223",borderRadius:3}}><div style={{height:"100%",width:pct+"%",background:`linear-gradient(90deg,${C.tl},${G(C.tl,0.5)})`,borderRadius:3}}/></div>
-                    <div style={{color:"#1E2D45",fontSize:9,marginTop:1}}>{pct}% complete</div>
-                  </div>;})}
-                </div>}
-                {d.remarks&&<div style={{padding:"7px 16px",fontSize:11,color:"#4B6180",borderTop:BD}}>📝 {d.remarks}</div>}
-                {(d.images||[]).length>0&&<div style={{padding:"8px 16px",borderTop:BD,display:"flex",gap:8,flexWrap:"wrap"}}>{d.images.map((img,i)=><img key={i} src={img} style={{height:64,borderRadius:6,objectFit:"cover",border:"1px solid "+C.br,cursor:"pointer"}} onClick={()=>window.open(img,"_blank")}/>)}</div>}
-                <div style={{padding:"8px 16px",borderTop:BD,display:"flex",gap:6,justifyContent:"flex-end"}}>
-                  <button onClick={()=>openEdit("dpr",d)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>✎ Edit DPR</button>
-                  <button onClick={()=>setDel({key:"dpr",id:d.id,label:"DPR — "+d.date})} style={{padding:"4px 12px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🗑 Delete</button>
-                </div>
-              </div>
-            );})}
+              );
+            })}
           </div>}
 
-          {/* TAB 2: ISSUES & ACCIDENTS TRACKER */}
-          {dprSub==="issues"&&<div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
-              <div style={{display:"flex",gap:6}}>
-                {["All","Open","Resolved","Rejected"].map(st=>(
-                  <button key={st} onClick={()=>setIssueFilter(st)} style={{padding:"5px 14px",borderRadius:20,border:"1px solid "+(issueFilter===st?C.or:"#1E2D45"),background:issueFilter===st?G(C.or,0.15):"transparent",color:issueFilter===st?C.or:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:issueFilter===st?700:400}}>{st}</button>
-                ))}
-              </div>
-              <Btn onClick={()=>openAdd("issue")} color={C.rd} icon="⚠️">+ Report Issue / Accident</Btn>
-            </div>
-            <div style={{...ss.card,overflowX:"auto"}}>
-              <table style={{borderCollapse:"collapse",width:"100%"}}>
-                <thead><tr style={{background:"#060C1A"}}>{["Title","Site","Priority","Due Date","Status","Assigned To","Created By","Created At","Safety Flag","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
-                <tbody>{(data.issues||[]).filter(iss=>issueFilter==="All"||iss.status===issueFilter).length===0?<tr><td colSpan={10} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No issues recorded</td></tr>:(data.issues||[]).filter(iss=>issueFilter==="All"||iss.status===issueFilter).map((iss,idx)=>{
-                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                    <td style={ss.td}><b>{iss.title}</b><div style={{fontSize:10,color:C.gr}}>{iss.desc}</div></td>
-                    <td style={ss.td}>{sName(iss.siteId)}</td>
-                    <td style={ss.td}><Tag c={iss.priority==="Critical"||iss.priority==="High"?"r":iss.priority==="Medium"?"o":"g"} ch={iss.priority}/></td>
-                    <td style={ss.td}><span style={{color:iss.status==="Open"&&new Date(iss.dueDate)<new Date()?C.rd:C.text}}>{iss.dueDate}</span></td>
-                    <td style={ss.td}><Tag c={iss.status==="Resolved"?"g":iss.status==="Rejected"?"r":"o"} ch={iss.status}/></td>
-                    <td style={ss.td}>{iss.assignedTo||"—"}</td>
-                    <td style={ss.td}>{iss.createdBy}</td>
-                    <td style={ss.td}><span style={{color:C.gr,fontSize:10}}>{iss.createdAt}</span></td>
-                    <td style={ss.td}>{iss.isAccident?<span style={{background:"rgba(248,113,113,.2)",color:C.rd,padding:"2px 6px",borderRadius:4,fontSize:9,fontWeight:700}}>🚨 Accident</span>:<span style={{color:C.gr,fontSize:10}}>Normal</span>}</td>
-                    <td style={ss.td}><div style={{display:"flex",gap:4}}>
-                      {iss.status==="Open"&&<button onClick={()=>upd("issues",arr=>arr.map(x=>x.id===iss.id?{...x,status:"Resolved"}:x))} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.gn,background:G(C.gn,0.1),color:C.gn,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Resolve</button>}
-                      <button onClick={()=>openEdit("issue",iss)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Edit</button>
-                      <button onClick={()=>setDel({key:"issues",id:iss.id,label:iss.title})} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.rd,background:G(C.rd,0.1),color:C.rd,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Del</button>
-                    </div></td>
-                  </tr>;
-                })}</tbody>
-              </table>
-            </div>
-          </div>}
-
-          {/* TAB 3: INTERACTIVE GANTT CHART */}
+          {/* TAB 2: INTERACTIVE GANTT CHART (2nd tab as requested) */}
           {dprSub==="gantt"&&<div>
             <div style={{...ss.card,padding:16}}>
               <div style={{color:C.or,fontWeight:700,fontSize:13,marginBottom:12}}>📊 Construction Project Timeline &amp; Task GANTT Schedule</div>
@@ -2018,12 +2571,133 @@ function Main({user,onLogout,settings,setSettings}){
               })}
             </div>
           </div>}
+
+          {/* TAB 3: ISSUES & ACCIDENTS TRACKER (3rd tab as requested) */}
+          {dprSub==="issues"&&<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+              <div style={{display:"flex",gap:6}}>
+                {["All","Open","Resolved","Rejected"].map(st=>(
+                  <button key={st} onClick={()=>setIssueFilter(st)} style={{padding:"5px 14px",borderRadius:20,border:"1px solid "+(issueFilter===st?C.or:"#1E2D45"),background:issueFilter===st?G(C.or,0.15):"transparent",color:issueFilter===st?C.or:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:issueFilter===st?700:400}}>{st}</button>
+                ))}
+              </div>
+              <Btn onClick={()=>openAdd("issue")} color={C.rd} icon="⚠️">+ Report Issue / Accident</Btn>
+            </div>
+            <div style={{...ss.card,overflowX:"auto"}}>
+              <table style={{borderCollapse:"collapse",width:"100%"}}>
+                <thead><tr style={{background:"#060C1A"}}>{["Title","Site","Priority","Due Date","Status","Assigned To","Created By","Created At","Safety Flag","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
+                <tbody>{(data.issues||[]).filter(iss=>issueFilter==="All"||iss.status===issueFilter).length===0?<tr><td colSpan={10} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No issues recorded</td></tr>:(data.issues||[]).filter(iss=>issueFilter==="All"||iss.status===issueFilter).map((iss,idx)=>{
+                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                    <td style={ss.td}><b>{iss.title}</b><div style={{fontSize:10,color:C.gr}}>{iss.desc}</div></td>
+                    <td style={ss.td}>{sName(iss.siteId)}</td>
+                    <td style={ss.td}><Tag c={iss.priority==="Critical"||iss.priority==="High"?"r":iss.priority==="Medium"?"o":"g"} ch={iss.priority}/></td>
+                    <td style={ss.td}><span style={{color:iss.status==="Open"&&new Date(iss.dueDate)<new Date()?C.rd:C.text}}>{iss.dueDate}</span></td>
+                    <td style={ss.td}><Tag c={iss.status==="Resolved"?"g":iss.status==="Rejected"?"r":"o"} ch={iss.status}/></td>
+                    <td style={ss.td}>{iss.assignedTo||"—"}</td>
+                    <td style={ss.td}>{iss.createdBy}</td>
+                    <td style={ss.td}><span style={{color:C.gr,fontSize:10}}>{iss.createdAt}</span></td>
+                    <td style={ss.td}>{iss.isAccident?<span style={{background:"rgba(248,113,113,.2)",color:C.rd,padding:"2px 6px",borderRadius:4,fontSize:9,fontWeight:700}}>🚨 Accident</span>:<span style={{color:C.gr,fontSize:10}}>Normal</span>}</td>
+                    <td style={ss.td}><div style={{display:"flex",gap:4}}>
+                      {iss.status==="Open"&&<button onClick={()=>upd("issues",arr=>arr.map(x=>x.id===iss.id?{...x,status:"Resolved"}:x))} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.gn,background:G(C.gn,0.1),color:C.gn,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Resolve</button>}
+                      <button onClick={()=>openEdit("issue",iss)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Edit</button>
+                      <button onClick={()=>setDel({key:"issues",id:iss.id,label:iss.title})} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.rd,background:G(C.rd,0.1),color:C.rd,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Del</button>
+                    </div></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </div>}
         </div>}
 
-        {/* ══ SALES (SO | Invoices | Estimates | Proforma | Debit Notes | Job Orders) ══ */}
+        {/* ══ SALES (Job Orders | Sale Orders | Invoices | Other Incomes | Quotations | Proforma | Debit Notes) ══ */}
         {tab==="sales"&&<div>
-          <SubTabs val={salesSub} onChange={setSalesSub} tabs={[{v:"so",l:"Sale Orders",icon:"📑"},{v:"jo",l:"Job Orders",icon:"📋"},{v:"inv",l:"Invoices",icon:"🧾"},{v:"est",l:"Estimates",icon:"📝"},{v:"proforma",l:"Proforma",icon:"📄"},{v:"dn",l:"Debit Notes",icon:"⬆"},{v:"otherincome",l:"Other Income",icon:"💹"}]}/>
+          <SubTabs val={salesSub} onChange={setSalesSub} tabs={[
+            {v:"jo",l:"Job Orders",icon:"📋"},
+            {v:"so",l:"Sale Orders",icon:"📑"},
+            {v:"inv",l:"Invoices",icon:"🧾"},
+            {v:"otherincome",l:"Other Incomes",icon:"💹"},
+            {v:"est",l:"Quotations",icon:"📝"},
+            {v:"proforma",l:"Proforma",icon:"📄"},
+            {v:"dn",l:"Debit Notes",icon:"⬆"}
+          ]}/>
+
+          {/* TAB 1: JOB ORDERS & WBS */}
+          {salesSub==="jo"&&<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+              <div style={{color:C.si,fontSize:11}}>Job Orders define site execution tasks, work breakdown structure (WBS), and budget ceilings derived from Sale Orders.</div>
+              <Btn onClick={()=>openAdd("jo")} color={C.or} icon="➕">New Job Order</Btn>
+            </div>
+            <div style={{...ss.card,overflowX:"auto"}}>
+              <table style={{borderCollapse:"collapse",width:"100%"}}>
+                <thead><tr style={{background:"#060C1A"}}>{["Date","Job Order No","Sale Order Ref","Site","Total Est. Cost","Tasks","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
+                <tbody>{(fData.jobOrders||[]).length===0?<tr><td colSpan={7} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No Job Orders</td></tr>:(fData.jobOrders||[]).map((r,idx)=>{
+                  const so = (data.saleOrders||[]).find(s=>s.id===r.soId);
+                  const totalMat = (r.tasks||[]).reduce((a,t)=>a+(Number(t.matBudget)||0),0);
+                  const totalLab = (r.tasks||[]).reduce((a,t)=>a+(Number(t.labBudget)||0),0);
+                  const totalMac = (r.tasks||[]).reduce((a,t)=>a+(Number(t.macBudget)||0),0);
+                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                    <td style={ss.td}>{r.date}</td>
+                    <td style={ss.td}><b style={{color:C.pu}}>{r.joNo}</b></td>
+                    <td style={ss.td}>{so ? so.client+" — "+so.desc : (r.client ? r.client+" — "+(r.jobName||"") : "—")}</td>
+                    <td style={ss.td}>{sName(r.siteId)}</td>
+                    <td style={ss.td}><b style={{color:C.or}}>{INR(totalMat+totalLab+totalMac)}</b></td>
+                    <td style={ss.td}>{r.tasks?.length||0} Tasks</td>
+                    <td style={ss.td}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      <button onClick={()=>setViewJo(r)} style={{padding:"3px 8px",borderRadius:6,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>👁 View</button>
+                      <button onClick={()=>genJOPrint(r,co,{siteName:sName(r.siteId),so:(data.saleOrders||[]).find(s=>s.id===r.soId),clientName:r.client})} style={{padding:"3px 8px",borderRadius:6,border:"1px solid "+C.pu,background:G(C.pu,0.1),color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨 Print JO</button>
+                      <button onClick={()=>openEdit("jo",r)} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
+                      <button onClick={()=>setDel({key:"jobOrders",id:r.id,label:r.joNo})} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
+                    </div></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </div>}
+
+          {/* TAB 2: SALE ORDERS WITH CUMULATIVE RECONCILIATION */}
           {salesSub==="so"&&<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+              <div style={{color:C.si,fontSize:11}}>Sale Orders contracted with clients with line-item task allocations and cumulative quantity capping.</div>
+              <div style={{display:"flex",gap:8}}>
+                <Btn onClick={()=>setShowSoRecon(!showSoRecon)} color={C.bl} icon="⚖">{showSoRecon?"Hide Reconciliation":"📊 Sale Orders Reconciliation Matrix"}</Btn>
+                <Btn onClick={()=>openAdd("so")} color={C.gn} icon="➕">New Sale Order</Btn>
+              </div>
+            </div>
+
+            {/* Prompt 7u: Comprehensive Sale Orders Reconciliation Matrix */}
+            {showSoRecon && (
+              <div style={{...ss.card,padding:14,marginBottom:14,background:"linear-gradient(135deg,#0E1628,#0A1223)",border:"1px solid "+C.bl}}>
+                <div style={{color:C.bl,fontWeight:700,fontSize:13,marginBottom:8}}>⚖ Sale Orders &amp; Work Execution Reconciliation Sheet</div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{borderCollapse:"collapse",width:"100%",fontSize:10}}>
+                    <thead><tr style={{background:"#060C1A"}}>{["Sale Order & Client","Line Item / Scope","SO Qty","Executed in Job Orders","Remaining JO Qty","Billed in Invoices","Invoice Details","Balance to Bill"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {(fData.saleOrders||[]).flatMap((so)=>{
+                        return (so.lineItems||[]).map((li,idx)=>{
+                          const soQty = Number(li.qty)||0;
+                          const executedJO = (data.jobOrders||[]).filter(j=>j.soId===so.id).flatMap(j=>j.tasks||[]).filter(t=>t.soLineIdx===idx).reduce((a,b)=>a+(Number(b.qty)||0),0);
+                          const remJO = Math.max(0, soQty - executedJO);
+                          const linkedInvs = (data.sales||[]).filter(s=>s.soId===so.id && s.lineItems && s.lineItems[idx]);
+                          const billed = linkedInvs.reduce((a,s)=>a+(Number(s.lineItems[idx].qty)||0),0);
+                          const invDetails = linkedInvs.map(s=>`${s.inv} (${s.lineItems[idx].qty} ${li.unit||""})`).join(", ") || "None";
+                          const balToBill = Math.max(0, soQty - billed);
+                          return <tr key={so.id+"_"+idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                            <td style={ss.td}><b>{so.soNo||so.id}</b><div style={{fontSize:9,color:C.gr}}>{so.client}</div></td>
+                            <td style={ss.td}><b>{li.desc||li.item}</b></td>
+                            <td style={{...ss.td,color:C.or,fontWeight:700}}>{soQty} {li.unit}</td>
+                            <td style={{...ss.td,color:C.gn,fontWeight:700}}>{executedJO} {li.unit}</td>
+                            <td style={{...ss.td,color:remJO>0?C.rd:C.gr}}>{remJO} {li.unit}</td>
+                            <td style={{...ss.td,color:C.tl,fontWeight:700}}>{billed} {li.unit}</td>
+                            <td style={{...ss.td,fontSize:9,color:C.si}}>{invDetails}</td>
+                            <td style={{...ss.td,color:balToBill>0?C.rd:C.gn,fontWeight:700}}>{balToBill} {li.unit}</td>
+                          </tr>;
+                        });
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div style={{...ss.card,overflowX:"auto"}}>
               <table style={{borderCollapse:"collapse",width:"100%"}}>
                 <thead><tr style={{background:"#060C1A"}}>{["Date","Site","Client","Description","Order Value","Billed","Remaining","Converted","Status","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
@@ -2039,45 +2713,20 @@ function Main({user,onLogout,settings,setSettings}){
                     <td style={ss.td}>{convd>0?<Tag c="g" ch={convd+" inv"}/>:<Tag c="r" ch="None"/>}</td>
                     <td style={ss.td}><Tag c={r.status==="Active"?"g":"r"} ch={r.status}/></td>
                     <td style={ss.td}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-                      {r.status==="Active"&&<button onClick={()=>convertSoToInv(r)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(52,211,153,.4)",background:"rgba(52,211,153,.12)",color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700,whiteSpace:"nowrap"}}>→ Invoice</button>}
-                      <button onClick={()=>setModal({t:"soProgress",so:r})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(45,212,191,.3)",background:"rgba(45,212,191,.1)",color:C.tl,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>📊</button>
-                      <button onClick={()=>{genInv({...r,inv:r.id},co,masters.clients.find(c=>c.name===r.client),{isEstimate:true});}} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>
-                      <button onClick={()=>openEdit("so",r)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
-                      <button onClick={()=>setDel({key:"saleOrders",id:r.id,label:r.desc})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
+                      <button onClick={()=>convertSoToJo(r)} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(245,158,11,.4)",background:"rgba(245,158,11,.12)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700,whiteSpace:"nowrap"}}>→ Job Order</button>
+                      {r.status==="Active"&&<button onClick={()=>convertSoToInv(r)} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(52,211,153,.4)",background:"rgba(52,211,153,.12)",color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700,whiteSpace:"nowrap"}}>→ Invoice</button>}
+                      <button onClick={()=>setModal({t:"soProgress",so:r})} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(45,212,191,.3)",background:"rgba(45,212,191,.1)",color:C.tl,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>📊</button>
+                      <button onClick={()=>{genInv({...r,inv:r.id},co,masters.clients.find(c=>c.name===r.client),{isEstimate:true,siteName:sName(r.siteId),soObj:r});}} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.1)",color:C.pu,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨</button>
+                      <button onClick={()=>openEdit("so",r)} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
+                      <button onClick={()=>setDel({key:"saleOrders",id:r.id,label:r.desc})} style={{padding:"3px 8px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
                     </div></td>
                   </tr>;
                 })}</tbody>
               </table>
             </div>
           </div>}
-          {salesSub==="jo"&&<div>
-            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
-              <Btn onClick={()=>openAdd("jo")} color={C.or} icon="➕">New Job Order</Btn>
-            </div>
-            <div style={{...ss.card,overflowX:"auto"}}>
-              <table style={{borderCollapse:"collapse",width:"100%"}}>
-                <thead><tr style={{background:"#060C1A"}}>{["Date","Job Order No","Sale Order Ref","Site","Total Est. Cost","Tasks","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
-                <tbody>{(fData.jobOrders||[]).length===0?<tr><td colSpan={7} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No Job Orders</td></tr>:(fData.jobOrders||[]).map((r,idx)=>{
-                  const so = (data.saleOrders||[]).find(s=>s.id===r.soId);
-                  const totalMat = (r.tasks||[]).reduce((a,t)=>a+(Number(t.matBudget)||0),0);
-                  const totalLab = (r.tasks||[]).reduce((a,t)=>a+(Number(t.labBudget)||0),0);
-                  const totalMac = (r.tasks||[]).reduce((a,t)=>a+(Number(t.macBudget)||0),0);
-                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                    <td style={ss.td}>{r.date}</td>
-                    <td style={ss.td}><b style={{color:C.pu}}>{r.joNo}</b></td>
-                    <td style={ss.td}>{so ? so.client+" — "+so.desc : "—"}</td>
-                    <td style={ss.td}>{sName(r.siteId)}</td>
-                    <td style={ss.td}><b style={{color:C.or}}>{INR(totalMat+totalLab+totalMac)}</b></td>
-                    <td style={ss.td}>{r.tasks?.length||0} Tasks</td>
-                    <td style={ss.td}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-                      <button onClick={()=>openEdit("jo",r)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
-                      <button onClick={()=>setDel({key:"jobOrders",id:r.id,label:r.joNo})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
-                    </div></td>
-                  </tr>;
-                })}</tbody>
-              </table>
-            </div>
-          </div>}
+
+          {/* TAB 3: INVOICES */}
           {salesSub==="inv"&&<div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
               <KCard icon="💰" label="Basic Revenue" value={INR(k.tB)} color={C.tl}/><KCard icon="📊" label="GST Billed" value={INR(k.tG)} color={C.or}/><KCard icon="📉" label="TDS Deducted" value={INR(k.tTDS)} color={C.rd}/><KCard icon="🎯" label="Net Receivable" value={INR(k.net)} color={C.pu}/>
@@ -2089,12 +2738,35 @@ function Main({user,onLogout,settings,setSettings}){
               onEdit={i=>openEdit("sales",byStatus(fData.sales||[],s=>cS(s).net)[i])}
               onDel={i=>{const e=byStatus(fData.sales||[],s=>cS(s).net)[i];setDel({key:"sales",id:e.id,label:e.inv});}}
               onRcv={i=>openRcv("sales",byStatus(fData.sales||[],s=>cS(s).net)[i])} rcvLabel="Receive"
-              onPrint={i=>{const e=byStatus(fData.sales||[],s=>cS(s).net)[i];const so=(data.saleOrders||[]).find(s=>s.id===e.soId);const abst=so?getSoProgress(e.soId).map((p,idx)=>{const il=e.lineItems&&e.lineItems[idx];return{...p,thisBill:il?il.qty:0};}):null;genInv(e,co,masters.clients.find(c=>c.name===e.client),{soAbstract:abst});}}
+              onPrint={i=>{
+                const e=byStatus(fData.sales||[],s=>cS(s).net)[i];
+                const so=(data.saleOrders||[]).find(s=>s.id===e.soId);
+                const jo=(data.jobOrders||[]).find(j=>j.id===(e.joId||e.jobOrderId)||(e.soId&&j.soId===e.soId));
+                const cl=masters.clients.find(c=>c.name===e.client);
+                const abst=so?getSoProgress(e.soId).map((p,idx)=>{const il=e.lineItems&&e.lineItems[idx];return{...p,thisBill:il?il.qty:0};}):null;
+                genInv(e,co,cl,{soAbstract:abst,siteName:sName(e.siteId),soObj:so,joObj:jo});
+              }}
               csvName="sales"/>
           </div>}
+
+          {/* TAB 4: OTHER INCOME */}
+          {salesSub==="otherincome"&&<div>
+            <div style={{...ss.card,padding:"8px 14px",marginBottom:10,background:G(C.tl,0.06),border:"1px solid "+G(C.tl,0.2)}}><span style={{color:C.tl,fontSize:11}}>Other Income covers scrap sales, inventory disposals, labour outsourced to other contractors, interest income, etc.</span></div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
+              {["Scrap Sale","Labour Outsourced","Other"].map(cat=><KCard key={cat} icon="💹" label={cat} value={INR((fData.otherIncome||[]).filter(x=>x.cat===cat).reduce((a,b)=>a+b.amt,0))} color={C.tl}/>)}
+            </div>
+            <Tbl cols={["Date","Site","Category","Description","Amount","Via","Reference"]}
+              rows={(fData.otherIncome||[]).map(r=>[r.date,sName(r.siteId),<Tag key="c" c="t" ch={r.cat}/>,r.desc,<b key="a" style={{color:C.tl}}>{INR(r.amt)}</b>,<Tag key="v" c={r.via==="bank"?"b":"o"} ch={r.via}/>,<span key="r" style={{color:C.gr,fontSize:10}}>{r.ref||"—"}</span>])}
+              onEdit={i=>openEdit("otherincome",fData.otherIncome[i])}
+              onDel={i=>setDel({key:"otherIncome",id:fData.otherIncome[i].id,label:fData.otherIncome[i].desc})}
+              csvName="other_income"/>
+            <div style={{...ss.card,padding:"8px 12px",marginTop:8,background:G(C.tl,0.04)}}><span style={{color:C.si,fontSize:10}}>Total Other Income: <b style={{color:C.tl}}>{INR((fData.otherIncome||[]).reduce((a,b)=>a+b.amt,0))}</b></span></div>
+          </div>}
+
+          {/* TAB 5: QUOTATIONS */}
           {salesSub==="est"&&<div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{color:C.si,fontSize:11}}>Client Quotations with locked rates, detailed BOQ, BOM, BBS &amp; Profit Projections</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+              <div style={{color:C.si,fontSize:11}}>Client Quotations with locked rates, detailed BOQ, BOM, BBS &amp; Profit Projections.</div>
               <Btn onClick={()=>openAdd("estimate")} color={C.gn} icon="＋">New Quotation</Btn>
             </div>
             <Tbl cols={["Date","Site","Client","Quotation No","Description","Value","Validity","Status","Actions"]}
@@ -2109,7 +2781,6 @@ function Main({user,onLogout,settings,setSettings}){
                 <Tag key="s" c={r.status==="Approved"?"g":r.status==="Sent"?"b":"o"} ch={r.status||"Draft"}/>,
                 <div key="act" style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                   <button onClick={()=>{
-                    // Convert to Sales Order
                     const newSO = {
                       id: uid(),
                       soNo: nextDocNo("SO", data.saleOrders||[], "soNo"),
@@ -2127,14 +2798,20 @@ function Main({user,onLogout,settings,setSettings}){
                   }} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+C.gn,background:G(C.gn,0.1),color:C.gn,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Convert SO</button>
                   <button onClick={()=>{
                     const soObj = (data.saleOrders||[]).find(s=>s.id===r.convertedSoId);
-                    genInv(r, co, masters.clients.find(c=>c.name===r.client), {isEstimate:true, siteName:sName(r.siteId), soObj});
+                    const cl = masters.clients.find(c=>c.name===r.client);
+                    genInv(r, co, cl, {isEstimate:true, siteName:sName(r.siteId), soObj});
                   }} style={{padding:"2px 6px",borderRadius:5,border:"1px solid "+C.or,background:"transparent",color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Print</button>
+                  {["Admin","Manager","Owner"].includes(user.role) && (
+                    <button onClick={()=>genConfidentialCostSheet(r, co, {siteName:sName(r.siteId)})} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+C.pu,background:G(C.pu,0.1),color:C.pu,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>🔒 Cost & Profit</button>
+                  )}
                 </div>
               ];})}
               onEdit={i=>openEdit("estimate",fData.estimates[i])}
               onDel={i=>setDel({key:"estimates",id:fData.estimates[i].id,label:fData.estimates[i].desc})}
               csvName="quotations"/>
           </div>}
+
+          {/* TAB 6: PROFORMA */}
           {salesSub==="proforma"&&<div>
             <Tbl cols={["Date","Site","Client","PF No","Description","Value","Valid Till"]}
               rows={(fData.proforma||[]).map(r=>{const li=calcLI(r.lineItems||[]);return[r.date,sName(r.siteId),r.client,<b key="p" style={{color:C.pu}}>{r.pfNo}</b>,r.desc,<b key="v" style={{color:C.or}}>{INR(li.total)}</b>,r.validTill||"—"];})}
@@ -2143,6 +2820,8 @@ function Main({user,onLogout,settings,setSettings}){
               onPrint={i=>{const e=fData.proforma[i];genInv(e,co,masters.clients.find(c=>c.name===e.client),{isProforma:true});}}
               csvName="proforma"/>
           </div>}
+
+          {/* TAB 7: DEBIT NOTES */}
           {salesSub==="dn"&&<div>
             <div style={{...ss.card,padding:"8px 14px",marginBottom:10,background:G(C.rd,0.07),border:`1px solid ${G(C.rd,0.2)}`}}><span style={{color:C.rd,fontSize:11}}>Debit Notes increase the amount receivable from client — price revisions, additional work, or extra charges.</span></div>
             <SFilt val={fSt} onChange={setFSt}/>
@@ -2154,26 +2833,13 @@ function Main({user,onLogout,settings,setSettings}){
               onPrint={i=>{const e=byStatus(fData.debitNotes||[],d=>cS(d).net)[i];genInv(e,co,masters.clients.find(c=>c.name===e.client),{isDebit:true});}}
               csvName="debit_notes"/>
           </div>}
-
-          {/* ── OTHER INCOME ── */}
-          {salesSub==="otherincome"&&<div>
-            <div style={{...ss.card,padding:"8px 14px",marginBottom:10,background:G(C.tl,0.06),border:"1px solid "+G(C.tl,0.2)}}><span style={{color:C.tl,fontSize:11}}>Other Income covers scrap sales, inventory disposals, labour outsourced to other contractors, interest income, etc.</span></div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
-              {["Scrap Sale","Labour Outsourced","Other"].map(cat=><KCard key={cat} icon="💹" label={cat} value={INR((fData.otherIncome||[]).filter(x=>x.cat===cat).reduce((a,b)=>a+b.amt,0))} color={C.tl}/>)}
-            </div>
-            <Tbl cols={["Date","Site","Category","Description","Amount","Via","Reference"]}
-              rows={(fData.otherIncome||[]).map(r=>[r.date,sName(r.siteId),<Tag key="c" c="t" ch={r.cat}/>,r.desc,<b key="a" style={{color:C.tl}}>{INR(r.amt)}</b>,<Tag key="v" c={r.via==="bank"?"b":"o"} ch={r.via}/>,<span key="r" style={{color:C.gr,fontSize:10}}>{r.ref||"—"}</span>])}
-              onEdit={i=>openEdit("otherincome",fData.otherIncome[i])}
-              onDel={i=>setDel({key:"otherIncome",id:fData.otherIncome[i].id,label:fData.otherIncome[i].desc})}
-              csvName="other_income"/>
-            <div style={{...ss.card,padding:"8px 12px",marginTop:8,background:G(C.tl,0.04)}}><span style={{color:C.si,fontSize:10}}>Total Other Income: <b style={{color:C.tl}}>{INR((fData.otherIncome||[]).reduce((a,b)=>a+b.amt,0))}</b></span></div>
-          </div>}
         </div>}
 
         {/* ══ PURCHASE (PR | PO | Bills | Expenses | CN | Input Rates | Reconciliation) ══ */}
         {tab==="purchase"&&<div>
           <SubTabs val={purchSub} onChange={setPurchSub} tabs={[
             {v:"pr",l:"Purchase Requisitions",icon:"📝"},
+            {v:"ccs",l:"Commercial Comparison (CCS)",icon:"📊"},
             {v:"po",l:"Purchase Orders",icon:"📋"},
             {v:"bills",l:"Purchase Bills",icon:"🧾"},
             {v:"exp",l:"Expenses",icon:"🔧"},
@@ -2213,30 +2879,9 @@ function Main({user,onLogout,settings,setSettings}){
                           <button onClick={()=>upd("purchaseRequisitions",arr=>arr.map(x=>x.id===pr.id?{...x,status:"Hold"}:x))} style={{padding:"2px 7px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Hold</button>
                         </>
                       )}
-                      {pr.status!=="Converted to PO" && (
-                        <button onClick={()=>{
-                          // Find rate memory for this item
-                          const ir=(masters.inputRates||[]).find(r=>(r.name||"").toLowerCase().includes((pr.material||"").toLowerCase()))||{};
-                          const defaultVendor=ir.vendorRateMemory?.[0]?.vendor || (masters.vendors[0]||{}).name || "Vendor";
-                          const defaultRate=ir.vendorRateMemory?.[0]?.rate || ir.rate || 500;
-                          const newPO={
-                            id: uid(),
-                            poNo: nextDocNo("PO", data.purchaseOrders||[], "poNo"),
-                            date: new Date().toISOString().slice(0,10),
-                            siteId: pr.siteId,
-                            jobOrderId: pr.joId,
-                            joNo: jo?.joNo,
-                            vendor: defaultVendor,
-                            desc: `Procurement against ${pr.prNo}: ${pr.material} (${pr.reason||""})`,
-                            status: "Active",
-                            lineItems: [{item:pr.material, desc:pr.material, hsn:"72142000", qty:Number(pr.qty)||1, unit:pr.unit||"Nos", rate:defaultRate, gst:ir.gst||18, disc:0}]
-                          };
-                          upd("purchaseOrders",arr=>[...arr,newPO]);
-                          upd("purchaseRequisitions",arr=>arr.map(x=>x.id===pr.id?{...x,status:"Converted to PO",approvedBy:user.name,poId:newPO.id}:x));
-                          alert(`Requisition converted to Purchase Order ${newPO.poNo} for ${defaultVendor} @ ₹${defaultRate}!`);
-                        }} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>Convert PO</button>
-                      )}
+                      <button onClick={()=>setViewPr(pr)} style={{padding:"2px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>👁 View</button>
                       <button onClick={()=>openEdit("pr",pr)} style={{padding:"2px 6px",borderRadius:5,border:"1px solid "+C.or,background:"transparent",color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Edit</button>
+                      <button onClick={()=>setDel({key:"purchaseRequisitions",id:pr.id,label:pr.prNo||pr.material})} style={{padding:"2px 6px",borderRadius:5,border:"1px solid "+C.rd,background:"transparent",color:C.rd,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Del</button>
                     </div></td>
                   </tr>;
                 })}</tbody>
@@ -2244,11 +2889,89 @@ function Main({user,onLogout,settings,setSettings}){
             </div>
           </div>}
 
-          {/* TAB 2: PURCHASE ORDERS (PO) WITH 2-PAGE PRINT */}
+          {/* TAB 2: COMMERCIAL COMPARISON SHEET (CCS) */}
+          {purchSub==="ccs"&&<div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+              <div style={{color:C.si,fontSize:11}}>Commercial Comparison Sheet (CCS) evaluates multiple vendor quotes against PR based on Landed Rates, Delivery, Payment Terms, and Past Rates Memory. Automatically generates L1, L2, L3 bidder rankings.</div>
+              <Btn onClick={()=>openAdd("ccs")} color={C.or} icon="➕">New Comparison (CCS)</Btn>
+            </div>
+            <div style={{...ss.card,overflowX:"auto"}}>
+              <table style={{borderCollapse:"collapse",width:"100%"}}>
+                <thead><tr style={{background:"#060C1A"}}>{["Date","CCS No","PR Ref","Site","Material & Qty","Evaluated Quotes & Ranks","Recommended L1","Status","Actions"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
+                <tbody>{(data.ccs||[]).length===0?<tr><td colSpan={9} style={{...ss.td,textAlign:"center",color:"#334155",padding:32}}>No Commercial Comparison Sheets</td></tr>:(data.ccs||[]).map((r,idx)=>{
+                  const quotes = r.quotes||[];
+                  const l1 = quotes.find(q=>q.rank==="L1"||q.isL1) || quotes[0] || {};
+                  return <tr key={idx} onMouseEnter={e=>e.currentTarget.style.background="#0A1223"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                    <td style={ss.td}>{r.date}</td>
+                    <td style={ss.td}><b style={{color:C.pu}}>{r.ccsNo||r.id}</b></td>
+                    <td style={ss.td}>{r.prNo||r.prId||"—"}</td>
+                    <td style={ss.td}>{sName(r.siteId)}</td>
+                    <td style={ss.td}><b>{r.material}</b><div style={{fontSize:10,color:C.or}}>{r.qty} {r.unit}</div></td>
+                    <td style={ss.td}>
+                      <div style={{fontSize:10}}>
+                        {quotes.map((q,qi)=><div key={qi} style={{display:"flex",gap:4,alignItems:"center",marginBottom:2}}>
+                          <Tag c={q.rank==="L1"||q.isL1?"g":"o"} ch={q.rank||("L"+(qi+1))}/>
+                          <span style={{color:C.text}}>{q.vendor}:</span>
+                          <b style={{color:C.tl}}>{INR(q.landedRate||Math.round(q.rate*(1+(q.gst||18)/100)))}</b>
+                          <span style={{color:C.gr,fontSize:9}}>({q.deliveryDays||"—"}d)</span>
+                        </div>)}
+                      </div>
+                    </td>
+                    <td style={ss.td}>
+                      <span style={{color:C.gn,fontWeight:700}}>⭐ {r.selectedVendor||l1.vendor||"—"}</span>
+                      <div style={{fontSize:9,color:C.si}}>Landed: {INR(l1.landedRate||Math.round((l1.rate||0)*(1+(l1.gst||18)/100)))}</div>
+                    </td>
+                    <td style={ss.td}><Tag c={r.status==="PO Issued"?"b":"g"} ch={r.status||"Evaluated"}/></td>
+                    <td style={ss.td}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      <button onClick={()=>setViewCcs(r)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>👁 View</button>
+                      <button onClick={()=>printCCS(r,co)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>🖨 Print</button>
+                      {r.status!=="PO Issued" && (
+                        <button onClick={()=>{
+                          const chosenQuote = l1;
+                          setForm({
+                            date: new Date().toISOString().slice(0,10),
+                            poNo: nextDocNo("PO", data.purchaseOrders||[], "poNo"),
+                            siteId: r.siteId,
+                            vendor: chosenQuote.vendor || r.selectedVendor,
+                            prId: r.prId,
+                            prNo: r.prNo,
+                            ccsId: r.id,
+                            ccsNo: r.ccsNo,
+                            bidderRank: chosenQuote.rank || "L1",
+                            landedRate: chosenQuote.landedRate,
+                            deliveryDays: chosenQuote.deliveryDays,
+                            paymentTerms: chosenQuote.paymentTerms,
+                            status: "Active",
+                            desc: `Procurement against ${r.prNo||"PR"} as per evaluated CCS ${r.ccsNo} (${chosenQuote.rank||"L1"} Bidder)`,
+                            vendorNote: `Issued under CCS ${r.ccsNo} (${chosenQuote.rank||"L1"} Rank). Delivery within ${chosenQuote.deliveryDays||7} days. Terms: ${chosenQuote.paymentTerms||"Credit 30d"}.`,
+                            lineItems: [{
+                              item: r.material,
+                              desc: r.material,
+                              hsn: "72142000",
+                              prQty: Number(r.qty)||1,
+                              qty: Number(r.qty)||1,
+                              unit: r.unit||"Nos",
+                              rate: chosenQuote.rate||500,
+                              gst: chosenQuote.gst||18,
+                              disc: 0
+                            }]
+                          });
+                          setModal({t:"txn", mod:"po"});
+                        }} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.gn,background:G(C.gn,0.15),color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700,whiteSpace:"nowrap"}}>📑 Issue PO</button>
+                      )}
+                      <button onClick={()=>setDel({key:"ccs",id:r.id,label:r.ccsNo||r.material})} style={{padding:"3px 6px",borderRadius:5,border:"1px solid "+C.rd,background:"transparent",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace"}}>Del</button>
+                    </div></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </div>}
+
+          {/* TAB 3: PURCHASE ORDERS (PO) WITH 2-PAGE PRINT */}
           {purchSub==="po"&&<div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
               <div style={{color:C.si,fontSize:11}}>Purchase Orders feature automated 2-page print layout with complete PR vs PO vs GRN vs Invoiced reconciliation.</div>
-              <Btn onClick={()=>openAdd("po")} color={C.rd} icon="＋">New Purchase Order</Btn>
+              <Btn onClick={()=>{ alert("Purchase Orders can only be issued through the CCS (Commercial Comparison Sheet) tab after evaluating vendor bids. Redirecting to CCS tab..."); setPurchSub("ccs"); }} color={C.or} icon="📊">New PO via CCS</Btn>
             </div>
             <Tbl cols={["Date","PO Number","Site","Vendor","Description","Order Value","Received","Pending","Status","Actions"]}
               rows={(fData.purchaseOrders||[]).map(r=>{const li=calcLI(r.lineItems||[]);const tv=li.total||0;const recv=(fData.purchases||[]).filter(p=>p.poId===r.id).reduce((a,p)=>a+cP(p).b,0);return[
@@ -2261,8 +2984,10 @@ function Main({user,onLogout,settings,setSettings}){
                 <span key="r" style={{color:C.gn}}>{INR(recv)}</span>,
                 <span key="p" style={{color:C.rd}}>{INR(tv-recv)}</span>,
                 <Tag key="s" c={r.status==="Active"?"g":"r"} ch={r.status}/>,
-                <div key="act" style={{display:"flex",gap:4}}>
+                <div key="act" style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                   <button onClick={()=>genPOPrint(r,co,masters.vendors.find(v=>v.name===r.vendor),{dataRef:data,siteName:sName(r.siteId)})} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.pu,background:G(C.pu,0.1),color:C.pu,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>🖨 2-Page PO</button>
+                  <button onClick={()=>openAdd("matreceipt",{poId:r.id,siteId:r.siteId,vendor:r.vendor,item:r.lineItems?.[0]?.item||"",qty:r.lineItems?.[0]?.qty||1,unit:r.lineItems?.[0]?.unit||"Nos",rate:r.lineItems?.[0]?.rate||0,gst:r.lineItems?.[0]?.gst||18,docType:"GRN"})} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.gn,background:G(C.gn,0.1),color:C.gn,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>📦 GRN</button>
+                  <button onClick={()=>openAdd("matreceipt",{poId:r.id,siteId:r.siteId,vendor:r.vendor,item:r.lineItems?.[0]?.item||"",qty:r.lineItems?.[0]?.qty||1,unit:r.lineItems?.[0]?.unit||"Nos",rate:r.lineItems?.[0]?.rate||0,gst:r.lineItems?.[0]?.gst||18,docType:"SRN"})} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>🛠 SRN</button>
                 </div>
               ];})}
               onEdit={i=>openEdit("po",fData.purchaseOrders[i])} onDel={i=>setDel({key:"purchaseOrders",id:fData.purchaseOrders[i].id,label:fData.purchaseOrders[i].desc})}
@@ -2641,10 +3366,11 @@ function Main({user,onLogout,settings,setSettings}){
                     <td style={ss.td}><span style={{color:isUrgent?C.or:"#CBD5E1",fontWeight:isUrgent?700:400}}>{c.dueDate||"—"}{isUrgent&&<span style={{color:C.or,fontSize:9,marginLeft:4}}>({daysLeft}d)</span>}</span></td>
                     <td style={ss.td}><Tag c={c.status==="Cleared"?"g":c.status==="Bounced"?"r":c.status==="Presented"?"b":"o"} ch={c.status}/></td>
                     <td style={ss.td}><span style={{color:C.gr,fontSize:10}}>{c.desc}</span></td>
-                    <td style={ss.td}><div style={{display:"flex",gap:3}}>
+                    <td style={ss.td}><div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
                       <button onClick={()=>openCheque(c)} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Edit</button>
                       {c.status==="Pending"&&<button onClick={()=>{upd("cheques",arr=>arr.map(x=>x.id===c.id?{...x,status:"Cleared"}:x));}} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(52,211,153,.3)",background:"rgba(52,211,153,.1)",color:C.gn,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Clear</button>}
                       {c.status==="Pending"&&<button onClick={()=>{upd("cheques",arr=>arr.map(x=>x.id===c.id?{...x,status:"Bounced"}:x));}} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Bounce</button>}
+                      <button onClick={()=>setDel({key:"cheques",id:c.id,label:c.chequeNo+" ("+c.party+")"})} style={{padding:"3px 9px",borderRadius:6,border:"1px solid rgba(248,113,113,.3)",background:"rgba(248,113,113,.1)",color:C.rd,cursor:"pointer",fontSize:10,fontFamily:"monospace",fontWeight:700}}>Del</button>
                     </div></td>
                   </tr>;
                 })}</tbody>
@@ -2667,7 +3393,11 @@ function Main({user,onLogout,settings,setSettings}){
                   <div><div style={{color:"#CBD5E1",fontSize:11,fontWeight:600}}>{r.party}</div><div style={{color:C.gr,fontSize:10}}>{r.section} @ {r.rate}% — {r.refInv}</div></div>
                   <div><div style={{color:color,fontWeight:700,fontFamily:"monospace"}}>{INR(r.taxAmt)}</div><div style={{color:C.gr,fontSize:10}}>on {INR(r.baseAmt)}</div></div>
                   <div style={{display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end"}}>
-                    <Tag c={r.status==="Deducted"?"g":r.status==="Filed"?"b":"o"} ch={r.status}/>
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      <Tag c={r.status==="Deducted"?"g":r.status==="Filed"?"b":"o"} ch={r.status}/>
+                      <button onClick={()=>setEditTds(r)} style={{padding:"2px 7px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>Edit</button>
+                      <button onClick={()=>setDel({key:"tdsTcs",id:r.id,label:r.party+" - "+r.section+" ("+INR(r.taxAmt)+")"})} style={{padding:"2px 7px",borderRadius:5,border:"1px solid "+C.rd,background:G(C.rd,0.1),color:C.rd,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>Del</button>
+                    </div>
                     <button onClick={()=>upd("tdsTcs",arr=>arr.map(x=>x.id===r.id?{...x,status:r.status==="Pending"?"Deducted":"Filed"}:x))} style={{padding:"2px 8px",borderRadius:5,border:"1px solid rgba(245,158,11,.3)",background:"rgba(245,158,11,.1)",color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>{r.status==="Pending"?"Mark Deducted":r.status==="Deducted"?"Mark Filed":"✓"}</button>
                   </div>
                 </div>)}
@@ -2684,6 +3414,30 @@ function Main({user,onLogout,settings,setSettings}){
                 <div style={{display:"flex",alignItems:"flex-end"}}><Btn full onClick={()=>{if(!form.party||!form.taxAmt)return;upd("tdsTcs",arr=>[...arr,{id:uid(),date:form.ttDate||new Date().toISOString().slice(0,10),txnType:form.txnType||"tds",direction:form.direction||"receivable",party:form.party,partyType:"other",section:form.section||"194C",rate:form.rate||0,baseAmt:form.baseAmt||0,taxAmt:form.taxAmt||0,refInv:form.refInv||"",status:form.status||"Pending",challNo:""}]);sf("party","");sf("taxAmt",0);sf("baseAmt",0);}} color={C.or} icon="＋">Add Entry</Btn></div>
               </div>
             </div>
+
+            {/* EDIT TDS MODAL */}
+            {editTds && (
+              <Modal title={"EDIT TDS / TCS ENTRY — "+editTds.party} onClose={()=>setEditTds(null)}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                  <F label="Type"><Sel val={editTds.txnType||"tds"} onChange={v=>setEditTds({...editTds,txnType:v})} opts={[{v:"tds",l:"TDS"},{v:"tcs",l:"TCS"}]}/></F>
+                  <F label="Direction"><Sel val={editTds.direction||"receivable"} onChange={v=>setEditTds({...editTds,direction:v})} opts={[{v:"receivable",l:"Receivable (from client)"},{v:"payable",l:"Payable (to govt)"}]}/></F>
+                  <F label="Party / Name"><Inp val={editTds.party||""} onChange={v=>setEditTds({...editTds,party:v})}/></F>
+                  <F label="Invoice / Bill Ref"><Inp val={editTds.refInv||""} onChange={v=>setEditTds({...editTds,refInv:v})}/></F>
+                  <F label="Section"><Sel val={editTds.section||"194C"} onChange={v=>setEditTds({...editTds,section:v})} opts={["194C","194J","194I","194Q","206C","Other"]}/></F>
+                  <F label="Status"><Sel val={editTds.status||"Pending"} onChange={v=>setEditTds({...editTds,status:v})} opts={["Pending","Deducted","Filed"]}/></F>
+                  <F label="Base Amount"><Num val={editTds.baseAmt||0} onChange={v=>setEditTds({...editTds,baseAmt:v})}/></F>
+                  <F label="Tax Amount"><Num val={editTds.taxAmt||0} onChange={v=>setEditTds({...editTds,taxAmt:v})}/></F>
+                  <F label="Date"><Inp val={editTds.date||""} onChange={v=>setEditTds({...editTds,date:v})} type="date"/></F>
+                  <F label="Challan No"><Inp val={editTds.challNo||""} onChange={v=>setEditTds({...editTds,challNo:v})}/></F>
+                </div>
+                <div style={{marginTop:14}}>
+                  <Btn full onClick={()=>{
+                    upd("tdsTcs", arr=>arr.map(x=>x.id===editTds.id?editTds:x));
+                    setEditTds(null);
+                  }}>Save TDS Changes</Btn>
+                </div>
+              </Modal>
+            )}
           </div>}
         </div>}
 
@@ -2992,13 +3746,44 @@ function Main({user,onLogout,settings,setSettings}){
                 <td style={ss.td}>{doc.date}</td>
                 <td style={ss.td}><span style={{color:C.gr,fontSize:10}}>{doc.size}</span></td>
                 <td style={ss.td}><div style={{display:"flex",gap:4}}>
-                  <button onClick={()=>alert(`Opening ${doc.name}...`)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>View</button>
+                  <button onClick={()=>setViewDoc(doc)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,cursor:"pointer",fontSize:9,fontFamily:"monospace",fontWeight:700}}>View</button>
                   <button onClick={()=>{const b=new Blob([`Mock file content for ${doc.name}`],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=doc.name;a.click();}} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Download</button>
                   <button onClick={()=>upd("siteDocs",arr=>arr.filter(x=>x.id!==doc.id))} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.rd,background:G(C.rd,0.1),color:C.rd,cursor:"pointer",fontSize:9,fontFamily:"monospace"}}>Delete</button>
                 </div></td>
               </tr>)}</tbody>
             </table>
           </div>
+
+          {/* DOCUMENT VIEWER MODAL */}
+          {viewDoc && (
+            <Modal title={"📄 DOCUMENT VIEWER — "+viewDoc.name} onClose={()=>setViewDoc(null)} wide>
+              <div style={{background:C.isLight?"#F8FAFC":"#0A1223",padding:14,borderRadius:8,border:"1px solid "+C.br,marginBottom:14}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,fontSize:11}}>
+                  <div><span style={{color:C.si,fontSize:10,display:"block",textTransform:"uppercase"}}>Site / Project</span><b>{sName(viewDoc.siteId)}</b></div>
+                  <div><span style={{color:C.si,fontSize:10,display:"block",textTransform:"uppercase"}}>File Type</span><Tag c={viewDoc.type==="PDF"?"r":viewDoc.type==="DOCX"?"b":viewDoc.type==="XLSX"?"g":"o"} ch={viewDoc.type}/></div>
+                  <div><span style={{color:C.si,fontSize:10,display:"block",textTransform:"uppercase"}}>Upload Date</span><b>{viewDoc.date}</b></div>
+                  <div><span style={{color:C.si,fontSize:10,display:"block",textTransform:"uppercase"}}>File Size</span><b>{viewDoc.size}</b></div>
+                </div>
+              </div>
+              <div style={{minHeight:260,background:C.isLight?"#FFFFFF":"#060C1A",border:"1px solid "+C.br,borderRadius:8,padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                <div style={{fontSize:48,marginBottom:12}}>📐</div>
+                <div style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:6}}>{viewDoc.name}</div>
+                <div style={{fontSize:12,color:C.textSub,maxWidth:480,lineHeight:1.6}}>
+                  Engineering Blueprint &amp; Technical Site Document Viewer. Registered and verified for site {sName(viewDoc.siteId)}.
+                </div>
+                <div style={{marginTop:16,display:"flex",gap:10}}>
+                  <Btn onClick={()=>{
+                    const printHtml = `<div style="padding:30px;font-family:Arial,sans-serif"><h2>${viewDoc.name}</h2><p>Site: ${sName(viewDoc.siteId)} | Date: ${viewDoc.date} | Type: ${viewDoc.type}</p><div style="border:2px dashed #999;height:400px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#666">Technical Blueprint / Document Content</div></div>`;
+                    openPrint(printWrapper(printHtml, viewDoc.name, co), viewDoc.name);
+                  }} color={C.or} icon="🖨">Print Document</Btn>
+                  <Btn onClick={()=>{
+                    const b=new Blob([`Site Document Content for ${viewDoc.name}\nSite: ${sName(viewDoc.siteId)}\nDate: ${viewDoc.date}`],{type:"text/plain"});
+                    const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=viewDoc.name;a.click();
+                  }} color={C.tl} icon="⬇">Download</Btn>
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>}
 
         {/* ══ MASTERS ══ */}
@@ -3532,22 +4317,109 @@ function Main({user,onLogout,settings,setSettings}){
       const isEdit=!!modal.oid;const mod=modal.mod;
       const liItems=form.lineItems||[{desc:"",item:"",hsn:"",qty:1,unit:"",rate:0,gst:18,disc:0}];
       const liTotal=calcLI(liItems).total;
-      const TITLES={sales:"SALES INVOICE",so:"SALE ORDER",estimate:"ESTIMATE / QUOTATION",proforma:"PROFORMA INVOICE",debitNote:"DEBIT NOTE",creditNote:"CREDIT NOTE",purch:"PURCHASE BILL",po:"PURCHASE ORDER",exp:"EXPENSE",pay:"PAYROLL",att:"ATTENDANCE",vouchers:"VOUCHER",contra:"CONTRA ENTRY",loans:"LOAN",transfers:"STOCK TRANSFER",matreceipt:"MATERIAL RECEIPT",inventory:"INVENTORY ENTRY",dpr:"DAILY PROGRESS REPORT"};
+      const TITLES={sales:"SALES INVOICE",so:"SALE ORDER",estimate:"ESTIMATE / QUOTATION",proforma:"PROFORMA INVOICE",debitNote:"DEBIT NOTE",creditNote:"CREDIT NOTE",purch:"PURCHASE BILL",po:"PURCHASE ORDER",exp:"EXPENSE",pay:"PAYROLL",att:"ATTENDANCE",vouchers:"VOUCHER",contra:"CONTRA ENTRY",loans:"LOAN",transfers:"STOCK TRANSFER",matreceipt:form.docType==="SRN"?"SERVICE RECEIVED NOTE (SRN)":"GOODS RECEIVED NOTE (GRN)",inventory:"INVENTORY ENTRY",dpr:"DAILY PROGRESS REPORT",jo:"JOB ORDER & WBS",ccs:"COMMERCIAL COMPARISON SHEET (CCS)"};
       const tt=(isEdit?"EDIT — ":"NEW — ")+(TITLES[mod]||mod.toUpperCase());
       const isWide=["purch","exp","pay","att","loans","transfers","matreceipt","dpr","debitNote","creditNote"].includes(mod);
-      const isXWide=["sales","so","po","estimate","proforma"].includes(mod);
+      const isXWide=["sales","so","po","estimate","proforma","jo","ccs"].includes(mod);
       return <Modal title={tt} onClose={()=>setModal(null)} wide={isWide} xwide={isXWide}>
 
         {/* SALES INVOICE */}
         {mod==="sales"&&<div>
-          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Invoice No"><Inp val={form.inv} onChange={v=>sf("inv",v)} placeholder="INV-005"/></F></GR>
-          <GR cols="1fr 1fr"><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F><F label="Link Sale Order"><Sel val={form.soId||""} onChange={v=>sf("soId",v)} opts={[{v:"",l:"None (Direct)"},...(data.saleOrders||[]).map(s=>({v:s.id,l:s.client+" — "+s.desc}))]}/></F></GR>
-          <GR cols="1fr 1fr"><F label="Client"><Sel val={form.client||""} onChange={v=>sf("client",v)} opts={[{v:"",l:"Select Client"},...masters.clients.map(c=>c.name)]}/></F><F label="TDS %"><Sel val={form.tds||2} onChange={v=>sf("tds",+v)} opts={[0,1,2,5,10]}/></F></GR>
+          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Invoice No"><Inp val={form.inv} onChange={v=>sf("inv",v)} placeholder="INV/001/26-27"/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
+            <F label="Link Sale Order"><Sel val={form.soId||""} onChange={v=>{
+              sf("soId",v);
+              const so=(data.saleOrders||[]).find(s=>s.id===v);
+              if(so){
+                sf("siteId",so.siteId);
+                sf("client",so.client);
+                if(!form.desc) sf("desc",so.desc);
+              }
+            }} opts={[{v:"",l:"None (Direct)"},...(data.saleOrders||[]).map(s=>({v:s.id,l:s.client+" — "+s.desc}))]}/></F>
+          </GR>
+          <GR cols="1fr 1fr">
+            <F label="Link Job Order (Optional)"><Sel val={form.joId||""} onChange={v=>{
+              sf("joId",v);
+              const jo=(data.jobOrders||[]).find(j=>j.id===v);
+              if(jo){
+                sf("soId",jo.soId);
+                sf("siteId",jo.siteId);
+                sf("client",jo.client);
+                if(jo.jobName&&!form.desc) sf("desc",jo.jobName);
+              }
+            }} opts={[{v:"",l:"None (Direct)"},...(data.jobOrders||[]).map(j=>({v:j.id,l:j.joNo+" — "+(j.jobName||j.client||sName(j.siteId))}))]}/></F>
+            <F label="Client"><Sel val={form.client||""} onChange={v=>sf("client",v)} opts={[{v:"",l:"Select Client"},...masters.clients.map(c=>c.name)]}/></F>
+          </GR>
+          <GR cols="1fr 1fr">
+            <F label="TDS %"><Sel val={form.tds||2} onChange={v=>sf("tds",+v)} opts={[0,1,2,5,10]}/></F>
+            <F label="Invoice Type"><Sel val={form.invoiceType||"RA"} onChange={v=>sf("invoiceType",v)} opts={[{v:"RA",l:"Running Account (RA)"},{v:"Final",l:"Final Invoice"},{v:"Supplementary",l:"Supplementary"}]}/></F>
+          </GR>
+
+          {/* Prompt 7v: Live Line-Item Billing Guidance (SO Qty, Executed, Prev Billed, Balance to Bill) */}
+          {(()=>{
+            const linkedSo = (data.saleOrders||[]).find(s=>s.id===form.soId);
+            const linkedJo = (data.jobOrders||[]).find(j=>j.id===form.joId);
+            if(!linkedSo && !linkedJo) return null;
+            const soLines = linkedSo ? (linkedSo.lineItems||[]) : [];
+            if(!soLines.length) return null;
+            return <div style={{...ss.card,padding:10,marginBottom:12,background:"#060C1A",border:"1px solid "+C.tl}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{color:C.tl,fontWeight:700,fontSize:11}}>📊 Live Line-Item Billing Reconciliation (SO vs Executed vs Balance)</span>
+                <span style={{color:C.gr,fontSize:9}}>{linkedSo?`SO: ${linkedSo.soNo||linkedSo.id}`:""} {linkedJo?`| JO: ${linkedJo.joNo}`:""}</span>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                  <thead><tr style={{background:"#0E1729"}}>
+                    <th style={{...ss.th,padding:"4px 6px"}}>#</th>
+                    <th style={{...ss.th,padding:"4px 6px"}}>Scope / Description</th>
+                    <th style={{...ss.th,padding:"4px 6px",textAlign:"right"}}>SO Qty</th>
+                    <th style={{...ss.th,padding:"4px 6px",textAlign:"right"}}>Executed Qty</th>
+                    <th style={{...ss.th,padding:"4px 6px",textAlign:"right"}}>Prev Billed</th>
+                    <th style={{...ss.th,padding:"4px 6px",textAlign:"right"}}>Balance to Bill</th>
+                    <th style={{...ss.th,padding:"4px 6px",textAlign:"center"}}>Action</th>
+                  </tr></thead>
+                  <tbody>{soLines.map((li,idx)=>{
+                    const executed = (data.dpr||[]).filter(d=>d.soId===linkedSo.id || (linkedJo && d.jobOrderId===linkedJo.id)).reduce((a,d)=>{
+                      const e=(d.entries||[]).find(en=>en.soLineIdx===idx || (en.name||"").toLowerCase().includes((li.desc||"").toLowerCase()));
+                      return a+(Number(e?e.completedQty:0)||0);
+                    },0);
+                    const prevBilled = (data.sales||[]).filter(s=>s.id!==modal.oid && s.soId===linkedSo.id).reduce((a,inv)=>{
+                      const il=(inv.lineItems||[])[idx];
+                      return a+(Number(il?il.qty:0)||0);
+                    },0);
+                    const soQty = Number(li.qty)||0;
+                    const balToBill = Math.max(0, soQty - prevBilled);
+                    return <tr key={idx} style={{borderBottom:"1px solid #1A2840"}}>
+                      <td style={{...ss.td,padding:"4px 6px"}}>{idx+1}</td>
+                      <td style={{...ss.td,padding:"4px 6px"}}><b>{li.desc||li.item}</b></td>
+                      <td style={{...ss.td,padding:"4px 6px",textAlign:"right",color:C.text}}>{soQty} {li.unit}</td>
+                      <td style={{...ss.td,padding:"4px 6px",textAlign:"right",color:C.gn,fontWeight:700}}>{executed} {li.unit}</td>
+                      <td style={{...ss.td,padding:"4px 6px",textAlign:"right",color:C.si}}>{prevBilled} {li.unit}</td>
+                      <td style={{...ss.td,padding:"4px 6px",textAlign:"right",color:balToBill>0?C.or:C.gn,fontWeight:700}}>{balToBill} {li.unit}</td>
+                      <td style={{...ss.td,padding:"4px 6px",textAlign:"center"}}>
+                        <button type="button" onClick={()=>{
+                          const newLI = [...liItems];
+                          if(newLI[idx]) {
+                            newLI[idx] = { ...newLI[idx], desc: li.desc||li.item, hsn: li.hsn||"995411", unit: li.unit, rate: li.rate||0, gst: li.gst||18, qty: balToBill > 0 ? balToBill : soQty };
+                          } else {
+                            newLI.push({ desc: li.desc||li.item, hsn: li.hsn||"995411", unit: li.unit, rate: li.rate||0, gst: li.gst||18, qty: balToBill > 0 ? balToBill : soQty, disc: 0 });
+                          }
+                          sf("lineItems", newLI);
+                        }} style={{padding:"2px 6px",borderRadius:4,border:"1px solid "+C.tl,background:G(C.tl,0.1),color:C.tl,fontSize:9,cursor:"pointer",fontFamily:"monospace"}}>Bill Balance</button>
+                      </td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+            </div>;
+          })()}
+
           <LineItemsEditor items={liItems} onChange={v=>sf("lineItems",v)} type="service" serviceOpts={masters.services} itemOpts={masters.items} gstOpts={gOpts} showDiscount showHSN/>
           <GR cols="2fr 1fr"><F label="Description (summary)"><Inp val={form.desc} onChange={v=>sf("desc",v)}/></F>
           <div style={{...ss.card,padding:"10px 12px",textAlign:"right",background:"#060C1A"}}><div style={{color:C.si,fontSize:9}}>NET PAYABLE (after TDS)</div><div style={{color:C.or,fontWeight:700,fontFamily:"monospace",fontSize:14}}>{INR(calcLI(liItems).basic*(1-(form.tds||2)/100)+calcLI(liItems).gstAmt)}</div></div></GR>
-          <GR cols="1fr 1fr"><F label="Invoice Type"><Sel val={form.invoiceType||"RA"} onChange={v=>sf("invoiceType",v)} opts={[{v:"RA",l:"Running Account (RA)"},{v:"Final",l:"Final Invoice"},{v:"Supplementary",l:"Supplementary"}]}/></F><F label="Client Work Order No"><Inp val={form.clientWONo||""} onChange={v=>sf("clientWONo",v)} placeholder="WO/2025/001"/></F></GR>
-          <GR cols="1fr 1fr"><F label="Client WO Date"><Inp val={form.clientWODate||""} onChange={v=>sf("clientWODate",v)} type="date"/></F><F label="E-Way Bill No"><Inp val={form.eWayBill||""} onChange={v=>sf("eWayBill",v)} placeholder="EWB-XXXXXXXXXXXXXXXXX"/></F></GR>
+          <GR cols="1fr 1fr"><F label="Client Work Order No"><Inp val={form.clientWONo||""} onChange={v=>sf("clientWONo",v)} placeholder="WO/2025/001"/></F><F label="Client WO Date"><Inp val={form.clientWODate||""} onChange={v=>sf("clientWODate",v)} type="date"/></F></GR>
+          <F label="E-Way Bill No"><Inp val={form.eWayBill||""} onChange={v=>sf("eWayBill",v)} placeholder="EWB-XXXXXXXXXXXXXXXXX"/></F>
           <Btn full onClick={()=>{saveRec("sales",form);setModal(null);setForm({});}}>Save Invoice</Btn>
         </div>}
 
@@ -3562,9 +4434,9 @@ function Main({user,onLogout,settings,setSettings}){
           <Btn full onClick={()=>{saveRec("saleOrders",{...form,convertedInvs:form.convertedInvs||[]});setModal(null);setForm({});}}>Save Sale Order</Btn>
         </div>}
 
-        {/* JOB ORDER */}
+        {/* JOB ORDER (Prompt 7n, 7o, 7p, 7q) */}
         {mod==="jo"&&<div>
-          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Job Order No"><Inp val={form.joNo} onChange={v=>sf("joNo",v)} placeholder="JO-001"/></F></GR>
+          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Job Order No"><Inp val={form.joNo} onChange={v=>sf("joNo",v)} placeholder="JO/001/26-27"/></F></GR>
           <GR cols="1fr 1fr">
             <F label="Link Sale Order">
               <Sel val={form.soId||""} onChange={v=>{
@@ -3573,36 +4445,133 @@ function Main({user,onLogout,settings,setSettings}){
                 if(so) {
                   sf("siteId", so.siteId);
                   sf("client", so.client);
-                  if(!(form.tasks?.length>0)) {
-                    sf("tasks", (so.lineItems||[]).map((li,i)=>({id:uid()+i, name: li.desc || li.item || "Unknown Task", qty: li.qty||1, unit: li.unit||"Nos", phase: "Site Preparation", estStartDate: form.date||new Date().toISOString().slice(0,10), estEndDate: "", matBudget: 0, labBudget: 0, macBudget: 0})));
-                  }
+                  sf("jobName", so.desc);
+                  const existingJOs = (data.jobOrders||[]).filter(j=>j.soId===so.id && j.id!==modal.oid);
+                  const newTasks = (so.lineItems||[]).map((li,i)=>{
+                    const alreadyAlloc = existingJOs.flatMap(j=>j.tasks||[]).filter(t=>t.soLineIdx===i).reduce((a,b)=>a+(Number(b.qty)||0),0);
+                    const soQty = Number(li.qty)||1;
+                    const avail = Math.max(0, soQty - alreadyAlloc);
+                    const rate = Number(li.rate)||1000;
+                    const val = avail * rate;
+                    return {
+                      id: uid()+i,
+                      soLineIdx: i,
+                      name: li.desc || li.item || ("Task " + (i+1)),
+                      unit: li.unit || "Nos",
+                      soQty,
+                      alreadyAllocated: alreadyAlloc,
+                      maxQty: avail,
+                      qty: avail,
+                      unitRate: rate,
+                      phase: i===0?"Site Preparation":i===1?"Foundation & Sub-Structure":"Super Structure & RCC",
+                      estStartDate: form.date||new Date().toISOString().slice(0,10),
+                      estEndDate: "",
+                      matBudget: Math.round(val * 0.45),
+                      labBudget: Math.round(val * 0.25),
+                      macBudget: Math.round(val * 0.10)
+                    };
+                  });
+                  sf("tasks", newTasks);
                 }
               }} opts={[{v:"",l:"Select Sale Order"},...(data.saleOrders||[]).map(s=>({v:s.id,l:s.client+" — "+s.desc}))]}/>
             </F>
             <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
           </GR>
+          <GR cols="1fr 1fr">
+            <F label="Job Description / Name of Job"><Inp val={form.jobName||""} onChange={v=>sf("jobName",v)} placeholder="e.g. NH-48 Full Contract — Zone A Foundation"/></F>
+            <F label="Client Name"><Inp val={form.client||""} onChange={v=>sf("client",v)} placeholder="Client name"/></F>
+          </GR>
+
+          {/* Prompt 7o & 7p: Task Allocations with SO Qty, Max Available Qty, This JO Qty, and Auto-Budgets */}
           {form.tasks && form.tasks.length > 0 && <div style={{...ss.card, padding:10, marginTop:10, overflowX:"auto"}}>
-            <div style={{color:C.or, fontWeight:700, marginBottom:8}}>Task Allocations & Budget</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div>
+                <span style={{color:C.or, fontWeight:700, fontSize:11}}>Task Allocations &amp; Budgets (Auto-Generated from Cost Analysis)</span>
+                <span style={{color:C.gr, fontSize:9, marginLeft:8}}>Quantities strictly capped to Sale Order balance</span>
+              </div>
+              <button type="button" onClick={()=>{
+                sf("tasks", [...form.tasks, {id:uid(), name:"", qty:1, maxQty:999999, soQty:1, unit:"Nos", phase:"Finishing & MEP", estStartDate:form.date||new Date().toISOString().slice(0,10), estEndDate:"", matBudget:0, labBudget:0, macBudget:0}]);
+              }} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.br,background:"transparent",color:C.gr,fontSize:9,cursor:"pointer"}}>+ Add Custom Task</button>
+            </div>
             <table style={{borderCollapse:"collapse", width:"100%", fontSize:10}}>
-              <thead><tr style={{background:"#060C1A"}}>{["Phase","Task","Start Date","End Date","Mat. Budget","Lab. Budget","Mac. Budget"].map(h=><th key={h} style={{...ss.th, padding:"6px 4px"}}>{h}</th>)}</tr></thead>
-              <tbody>{form.tasks.map((t,i)=><tr key={i}>
-                <td style={{...ss.td, padding:"4px"}}><Sel val={t.phase} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, phase:v}:x))} opts={["Site Preparation","Foundation & Sub-Structure","Super Structure & RCC","Finishing & MEP"]}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Inp val={t.name} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, name:v}:x))}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estStartDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estStartDate:v}:x))}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estEndDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estEndDate:v}:x))}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Num val={t.matBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, matBudget:v}:x))}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Num val={t.labBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, labBudget:v}:x))}/></td>
-                <td style={{...ss.td, padding:"4px"}}><Num val={t.macBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, macBudget:v}:x))}/></td>
-              </tr>)}</tbody>
+              <thead><tr style={{background:"#060C1A"}}>
+                <th style={{...ss.th, padding:"6px 4px"}}>Phase</th>
+                <th style={{...ss.th, padding:"6px 4px"}}>Task Name</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right"}}>SO Qty</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right"}}>Max Avail</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right", color:C.or}}>This JO Qty</th>
+                <th style={{...ss.th, padding:"6px 4px"}}>Start Date</th>
+                <th style={{...ss.th, padding:"6px 4px"}}>End Date</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right"}}>Mat. Budget</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right"}}>Lab. Budget</th>
+                <th style={{...ss.th, padding:"6px 4px", textAlign:"right"}}>Mac. Budget</th>
+                <th style={{...ss.th, padding:"6px 4px"}}></th>
+              </tr></thead>
+              <tbody>{form.tasks.map((t,i)=>{
+                const isOver = t.maxQty != null && Number(t.qty) > Number(t.maxQty);
+                return <tr key={i} style={{background:isOver?"rgba(248,113,113,0.1)":"transparent"}}>
+                  <td style={{...ss.td, padding:"4px"}}><Sel val={t.phase} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, phase:v}:x))} opts={["Site Preparation","Foundation & Sub-Structure","Super Structure & RCC","Finishing & MEP"]}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><Inp val={t.name} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, name:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px", textAlign:"right", color:C.si}}>{t.soQty != null ? `${t.soQty} ${t.unit}` : "—"}</td>
+                  <td style={{...ss.td, padding:"4px", textAlign:"right", color:C.gn, fontWeight:700}}>{t.maxQty != null ? `${t.maxQty} ${t.unit}` : "—"}</td>
+                  <td style={{...ss.td, padding:"4px", textAlign:"right"}}>
+                    <input
+                      type="number"
+                      style={{...ss.inp, marginBottom:0, fontSize:10, width:75, textAlign:"right", border:isOver?"1px solid "+C.rd:"1px solid #1E2D45", color:isOver?C.rd:C.or, fontWeight:700}}
+                      value={t.qty}
+                      onChange={e=>{
+                        const nQty = Number(e.target.value)||0;
+                        const curRate = t.unitRate || 1000;
+                        const nextVal = nQty * curRate;
+                        sf("tasks", form.tasks.map((x,idx)=>idx===i?{
+                          ...x,
+                          qty: nQty,
+                          matBudget: Math.round(nextVal * 0.45),
+                          labBudget: Math.round(nextVal * 0.25),
+                          macBudget: Math.round(nextVal * 0.10)
+                        }:x));
+                      }}
+                    />
+                  </td>
+                  <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estStartDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estStartDate:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><Inp type="date" val={t.estEndDate} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, estEndDate:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><Num val={t.matBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, matBudget:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><Num val={t.labBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, labBudget:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><Num val={t.macBudget} onChange={v=>sf("tasks", form.tasks.map((x,idx)=>idx===i?{...x, macBudget:v}:x))}/></td>
+                  <td style={{...ss.td, padding:"4px"}}><button type="button" onClick={()=>sf("tasks",form.tasks.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.rd,cursor:"pointer",fontWeight:700}}>✕</button></td>
+                </tr>;
+              })}</tbody>
             </table>
-            <div style={{marginTop:8, display:"flex", justifyContent:"space-between", background:"#060C1A", padding:"8px", borderRadius:4}}>
-              <span style={{color:C.tl, fontWeight:700}}>Total Mat: {INR(form.tasks.reduce((a,x)=>a+(Number(x.matBudget)||0),0))}</span>
-              <span style={{color:C.pu, fontWeight:700}}>Total Lab: {INR(form.tasks.reduce((a,x)=>a+(Number(x.labBudget)||0),0))}</span>
-              <span style={{color:C.or, fontWeight:700}}>Total Mac: {INR(form.tasks.reduce((a,x)=>a+(Number(x.macBudget)||0),0))}</span>
+            <div style={{marginTop:8, display:"flex", justifyContent:"space-between", background:"#060C1A", padding:"8px 12px", borderRadius:4, fontSize:11}}>
+              <span style={{color:C.tl, fontWeight:700}}>Total Mat Budget: {INR(form.tasks.reduce((a,x)=>a+(Number(x.matBudget)||0),0))}</span>
+              <span style={{color:C.pu, fontWeight:700}}>Total Lab Budget: {INR(form.tasks.reduce((a,x)=>a+(Number(x.labBudget)||0),0))}</span>
+              <span style={{color:C.or, fontWeight:700}}>Total Mac Budget: {INR(form.tasks.reduce((a,x)=>a+(Number(x.macBudget)||0),0))}</span>
+              <span style={{color:C.gn, fontWeight:700}}>Total Est. Cost: {INR(form.tasks.reduce((a,x)=>a+(Number(x.matBudget)||0)+(Number(x.labBudget)||0)+(Number(x.macBudget)||0),0))}</span>
             </div>
           </div>}
+
+          {/* Prompt 7q: Special Instructions in Job Order */}
+          <div style={{marginTop:10}}>
+            <F label="Special Instructions / Scope of Work Notes">
+              <textarea
+                style={{...ss.inp, height:60, fontFamily:"monospace", fontSize:11}}
+                value={form.specialInstructions||""}
+                onChange={e=>sf("specialInstructions",e.target.value)}
+                placeholder="Safety precautions, structural tolerances (IS 456), quality test certificate requirements, staging & shuttering norms..."
+              />
+            </F>
+          </div>
+
           <div style={{marginTop:12}}>
-            <Btn full onClick={()=>{saveRec("jobOrders",form);setModal(null);setForm({});}}>Save Job Order</Btn>
+            <Btn full onClick={()=>{
+              const overTask = (form.tasks||[]).find(t => t.maxQty != null && Number(t.qty) > Number(t.maxQty));
+              if(overTask) {
+                return alert(`Validation Error: Quantity for task "${overTask.name}" (${overTask.qty}) exceeds available Sale Order balance (${overTask.maxQty}). Please adjust quantity.`);
+              }
+              saveRec("jobOrders",form);
+              setModal(null);
+              setForm({});
+            }}>Save Job Order</Btn>
           </div>
         </div>}
 
@@ -3645,6 +4614,14 @@ function Main({user,onLogout,settings,setSettings}){
               <GR cols="1fr 1fr"><F label="Contact Person"><Inp val={form.contactPerson||""} onChange={v=>sf("contactPerson",v)} placeholder="e.g. Chief Engineer"/></F><F label="Contact Phone"><Inp val={form.contactPhone||""} onChange={v=>sf("contactPhone",v)} placeholder="e.g. 9876543210"/></F></GR>
               <GR cols="1fr 1fr"><F label="Quotation Validity Till"><Inp val={form.validTill} onChange={v=>sf("validTill",v)} type="date"/></F><F label="Quotation Status"><Sel val={form.status||"Draft"} onChange={v=>sf("status",v)} opts={["Draft","Sent","Approved","Rejected"]}/></F></GR>
               <F label="Job Description / Scope of Work"><Inp val={form.desc} onChange={v=>sf("desc",v)} placeholder="Detailed job scope & conditions..."/></F>
+              <F label="Terms and Conditions (Appears on Quotation Print)">
+                <textarea
+                  style={{...ss.inp, height:60, fontFamily:"monospace", fontSize:11}}
+                  value={form.terms||""}
+                  onChange={e=>sf("terms",e.target.value)}
+                  placeholder={"1. Payment terms: 30 days from RA bill submission\n2. Taxes: GST extra as applicable at actuals\n3. Price validity: 30 days from date of quotation\n4. Water & electricity provided by client at single point"}
+                />
+              </F>
               <F label="Attach Client Drawings / Technical Documents">
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}}>
                   {(form.drawings||[]).map((dw,di)=><div key={di} style={{padding:"4px 8px",borderRadius:6,border:"1px solid "+C.tl,background:G(C.tl,0.1),fontSize:10,display:"flex",alignItems:"center",gap:6}}>
@@ -3866,34 +4843,327 @@ function Main({user,onLogout,settings,setSettings}){
           <Btn full onClick={()=>{saveRec("creditNotes",form);setModal(null);setForm({});}}>Save Credit Note</Btn>
         </div>}
 
-        {/* PURCHASE ORDER */}
+        {/* PURCHASE ORDER (Prompt 8d, 8e, 8f, 8g) */}
         {mod==="po"&&<div>
-          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
-          <F label="Vendor"><Sel val={form.vendor||""} onChange={v=>sf("vendor",v)} opts={[{v:"",l:"Select"},...masters.vendors.map(v=>v.name)]}/></F>
-          <F label="Description"><Inp val={form.desc} onChange={v=>sf("desc",v)} placeholder="Material supply description"/></F>
+          {/* Linked PR & CCS Banner */}
+          {(form.ccsId || form.prId) && (
+            <div style={{...ss.card,padding:10,marginBottom:12,background:"#060C1A",border:"1px solid "+C.or}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{color:C.or,fontWeight:700,fontSize:11}}>📑 Linked Commercial Comparison (CCS) &amp; PR Reference</span>
+                <span style={{color:C.gn,fontSize:10,fontWeight:700}}>Awarded to: {form.vendor} ({form.bidderRank||"L1 Bidder"})</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,fontSize:10}}>
+                <div><span style={{color:C.si}}>PR No:</span> <b>{form.prNo||form.prId||"—"}</b></div>
+                <div><span style={{color:C.si}}>CCS Ref:</span> <b>{form.ccsNo||form.ccsId||"—"}</b></div>
+                <div><span style={{color:C.si}}>Landed Rate:</span> <b style={{color:C.tl}}>{INR(form.landedRate||0)}</b></div>
+                <div><span style={{color:C.si}}>Delivery:</span> <b>{form.deliveryDays||7} Days</b></div>
+              </div>
+              {form.paymentTerms&&<div style={{fontSize:10,color:C.gr,marginTop:4}}>Payment Terms: <b style={{color:C.text}}>{form.paymentTerms}</b></div>}
+            </div>
+          )}
+
+          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="PO Number"><Inp val={form.poNo||""} onChange={v=>sf("poNo",v)} placeholder="PO/001/26-27"/></F></GR>
+          <GR cols="1fr 1fr">
+            <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
+            <F label="Vendor"><Sel val={form.vendor||""} onChange={v=>sf("vendor",v)} opts={[{v:"",l:"Select Vendor"},...masters.vendors.map(v=>v.name)]}/></F>
+          </GR>
+          <GR cols="1fr 1fr">
+            <F label="Link Purchase Requisition (PR)"><Sel val={form.prId||""} onChange={v=>{
+              sf("prId",v);
+              const pr=(data.purchaseRequisitions||[]).find(p=>p.id===v);
+              if(pr){
+                sf("prNo",pr.prNo);
+                sf("siteId",pr.siteId);
+                if(pr.material){
+                  sf("lineItems",[{item:pr.material,desc:pr.material,hsn:"72142000",qty:pr.qty||1,unit:pr.unit||"Nos",rate:500,gst:18,disc:0}]);
+                }
+              }
+            }} opts={[{v:"",l:"None (Direct)"},...(data.purchaseRequisitions||[]).map(p=>({v:p.id,l:p.prNo+" — "+p.material+" ("+p.qty+" "+p.unit+")"}))]}/></F>
+            <F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Completed","Cancelled"]}/></F>
+          </GR>
+
+          <F label="Description / Scope of Supply"><Inp val={form.desc} onChange={v=>sf("desc",v)} placeholder="Material supply description"/></F>
+          
+          {/* Prompt 8f: Provide option to differ the quantity of line items */}
+          <div style={{marginBottom:6}}>
+            <span style={{fontSize:10,color:C.gr}}>💡 You can adjust/differ line-item quantities and rates as agreed with the vendor:</span>
+          </div>
           <LineItemsEditor items={liItems} onChange={v=>sf("lineItems",v)} type="item" serviceOpts={masters.services} itemOpts={masters.items} gstOpts={gOpts} showHSN/>
-          <GR cols="1fr 1fr"><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Completed","Cancelled"]}/></F>
-          <div style={{...ss.card,padding:"10px 12px",textAlign:"right",background:"#060C1A"}}><div style={{color:C.si,fontSize:9}}>ORDER VALUE</div><div style={{color:C.or,fontWeight:700,fontFamily:"monospace",fontSize:14}}>{INR(liTotal)}</div></div></GR>
+
+          <div style={{...ss.card,padding:"10px 12px",textAlign:"right",background:"#060C1A",marginTop:6,marginBottom:10}}>
+            <div style={{color:C.si,fontSize:9}}>PURCHASE ORDER VALUE</div>
+            <div style={{color:C.or,fontWeight:700,fontFamily:"monospace",fontSize:14}}>{INR(liTotal)}</div>
+          </div>
+
+          {/* Prompt 8g: Provide option to attach Vendor Note */}
+          <F label="Vendor Note / Special Instructions">
+            <textarea
+              style={{...ss.inp,height:55,fontFamily:"monospace",fontSize:11}}
+              value={form.vendorNote||""}
+              onChange={e=>sf("vendorNote",e.target.value)}
+              placeholder="Delivery schedule, loading/unloading, test certificates required upon delivery, gate pass instructions..."
+            />
+          </F>
+
           <Btn full onClick={()=>{saveRec("purchaseOrders",form);setModal(null);setForm({});}}>Save Purchase Order</Btn>
         </div>}
 
-        {/* PURCHASE BILL */}
-        {mod==="purch"&&<div>
-          <GR cols="1fr 1fr"><F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F><F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F></GR>
-          <GR cols="1fr 1fr">
-            <F label="Job Order"><Sel val={form.jobOrderId||""} onChange={v=>{sf("jobOrderId",v);sf("taskId","");}} opts={[{v:"",l:"None"},...(data.jobOrders||[]).filter(j=>j.siteId===form.siteId).map(j=>({v:j.id,l:j.joNo}))]}/></F>
-            {form.jobOrderId ? <F label="Task"><Sel val={form.taskId||""} onChange={v=>sf("taskId",v)} opts={[{v:"",l:"Select Task"},...((data.jobOrders||[]).find(j=>j.id===form.jobOrderId)?.tasks||[]).map(t=>({v:t.id,l:t.name}))]}/></F> : <div/>}
-          </GR>
-          <F label="Vendor"><Sel val={form.vendor||""} onChange={v=>sf("vendor",v)} opts={[{v:"",l:"Select"},...masters.vendors.map(v=>v.name)]}/></F>
-          <GR cols="1fr 1fr"><F label="Item"><Sel val={form.item||""} onChange={v=>{sf("item",v);const it=masters.items.find(i=>i.name===v);if(it){sf("unit",it.unit);sf("rate",it.rate);sf("gst",it.gst||18);sf("hsn",it.hsn||"");}}} opts={[{v:"",l:"Select"},...masters.items.map(i=>i.name)]}/></F><F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="HSN / SAC code"/></F></GR>
-          <GR cols="1fr 1fr 1fr"><F label="Qty"><Num val={form.qty} onChange={v=>sf("qty",v)}/></F><F label="Unit"><Inp val={form.unit||""} onChange={v=>sf("unit",v)}/></F><F label="Rate"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F></GR>
-          <GR cols="1fr 1fr 1fr"><F label="Item Category"><Sel val={form.itemCategory||"Goods"} onChange={v=>sf("itemCategory",v)} opts={[{v:"Goods",l:"Goods"},{v:"Services",l:"Services"},{v:"Capital Goods",l:"Capital Goods"}]}/></F><F label="ITC Eligibility"><Sel val={form.itcEligible!==false?"eligible":"ineligible"} onChange={v=>sf("itcEligible",v==="eligible")} opts={[{v:"eligible",l:"Eligible for ITC"},{v:"ineligible",l:"Ineligible for ITC"}]}/></F><F label="GST %"><Sel val={form.gst||18} onChange={v=>sf("gst",+v)} opts={gOpts}/></F></GR>
-          {form.itemCategory==="Capital Goods"&&<div style={{...ss.card,padding:"8px 12px",marginBottom:8,background:G(C.pu,0.07),border:"1px solid "+G(C.pu,0.2)}}><span style={{color:C.pu,fontSize:10}}>Capital Goods: ITC available @50% in year 1, balance in subsequent years.</span></div>}
-          <F label="ITC Claim Status"><Sel val={form.itcClaimed?"yes":"no"} onChange={v=>sf("itcClaimed",v==="yes")} opts={[{v:"no",l:"Pending Claim"},{v:"yes",l:"Claimed"}]}/></F>
-          {form.qty>0&&form.rate>0&&<div style={{background:G(C.rd,0.07),borderRadius:7,padding:"8px 12px",marginBottom:8,border:"1px solid "+G(C.rd,0.2)}}>{[["Basic",INR((form.qty||0)*(form.rate||0)),"#E2E8F0"],["GST",INR((form.qty||0)*(form.rate||0)*(form.gst||18)/100),C.or],["Total",INR((form.qty||0)*(form.rate||0)*(1+(form.gst||18)/100)),C.rd]].map(([l,v,c],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}><span style={{color:C.si}}>{l}</span><span style={{color:c,fontWeight:i===2?700:400,fontFamily:"monospace"}}>{v}</span></div>)}</div>}
-          <GR cols="1fr 1fr"><F label="E-Way Bill No (optional)"><Inp val={form.eWayBill||""} onChange={v=>sf("eWayBill",v)} placeholder="EWB-XXXXXXXXXXXXXXXXX"/></F><F label="Vehicle / Transport No"><Inp val={form.vehicleNo||""} onChange={v=>sf("vehicleNo",v)} placeholder="MH-12-AB-1234"/></F></GR>
-          <Btn full onClick={()=>saveTxn("purchases")}>Save Purchase</Btn>
-        </div>}
+        {/* PURCHASE BILL (Prompt 8j) */}
+        {mod==="purch"&&(()=>{
+          const poList = data.purchaseOrders||[];
+          const selPo = poList.find(p=>p.id===form.poId);
+          const receipts = (data.materialReceipts||[]).filter(m=>m.poId===form.poId);
+          const hasReceipt = receipts.length > 0;
+
+          return <div>
+            <GR cols="1fr 1fr">
+              <F label="Date"><Inp val={form.date} onChange={v=>sf("date",v)} type="date"/></F>
+              <F label="Supplier Bill / Invoice No"><Inp val={form.billNo||""} onChange={v=>sf("billNo",v)} placeholder="e.g. SIL/2025/901"/></F>
+            </GR>
+
+            {/* Step 1: Select Purchase Order (Mandatory for verification) */}
+            <F label="Select Purchase Order (Mandatory: Verifies PR &amp; GRN/SRN)">
+              <Sel val={form.poId||""} onChange={v=>{
+                sf("poId",v);
+                const po=poList.find(p=>p.id===v);
+                if(po){
+                  sf("siteId",po.siteId);
+                  sf("vendor",po.vendor);
+                  sf("prId",po.prId||"");
+                  sf("prNo",po.prNo||"");
+                  sf("jobOrderId",po.jobOrderId||"");
+                  if(po.lineItems?.length){
+                    const li=po.lineItems[0];
+                    sf("item",li.item||li.desc);
+                    sf("qty",li.qty);
+                    sf("unit",li.unit||"Nos");
+                    sf("rate",li.rate);
+                    sf("gst",li.gst||18);
+                    sf("hsn",li.hsn||"");
+                  }
+                }
+              }} opts={[{v:"",l:"Select Purchase Order (Autofills PR & details)"},...poList.map(p=>({v:p.id,l:`${p.poNo||p.id} — ${p.vendor} (${sName(p.siteId)})`}))]}/>
+            </F>
+
+            {/* Prompt 8j: Check if GRN or SRN are punched */}
+            {form.poId && (
+              <div style={{marginBottom:12}}>
+                {hasReceipt ? (
+                  <div style={{padding:"8px 12px",borderRadius:6,background:"rgba(52,211,153,0.1)",border:"1px solid "+C.gn,color:C.gn,fontSize:11}}>
+                    ✅ <b>Goods / Services Receipt Verified:</b> Received on site under receipt(s): <b>{receipts.map(r=>`${r.grnNo||r.id} (${r.qty} ${r.unit})`).join(", ")}</b>. Eligible for booking Purchase Invoice.
+                  </div>
+                ) : (
+                  <div style={{padding:"10px 14px",borderRadius:6,background:"rgba(248,113,113,0.12)",border:"1px solid "+C.rd,color:C.rd,fontSize:11}}>
+                    ⛔ <b>Internal Control Block:</b> Neither GRN (Goods Received Note) nor SRN (Service Received Note) has been punched for PO <b>{selPo?.poNo||form.poId}</b>.
+                    <div style={{marginTop:4,fontSize:10,color:C.text}}>Under company accounting guidelines, Purchase Invoice CANNOT be booked without formal GRN/SRN punch verifying actual delivery at site. Please punch GRN/SRN first from the PO list.</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <GR cols="1fr 1fr">
+              <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
+              <F label="Vendor"><Sel val={form.vendor||""} onChange={v=>sf("vendor",v)} opts={[{v:"",l:"Select Vendor"},...masters.vendors.map(v=>v.name)]}/></F>
+            </GR>
+            <GR cols="1fr 1fr">
+              <F label="Item / Description"><Sel val={form.item||""} onChange={v=>{sf("item",v);const it=masters.items.find(i=>i.name===v);if(it){sf("unit",it.unit);sf("rate",it.rate);sf("gst",it.gst||18);sf("hsn",it.hsn||"");}}} opts={[{v:"",l:"Select Item"},...masters.items.map(i=>i.name)]}/></F>
+              <F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="HSN / SAC code"/></F>
+            </GR>
+            <GR cols="1fr 1fr 1fr">
+              <F label="Qty Received/Billed"><Num val={form.qty} onChange={v=>sf("qty",v)}/></F>
+              <F label="Unit"><Inp val={form.unit||""} onChange={v=>sf("unit",v)}/></F>
+              <F label="Rate"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F>
+            </GR>
+            <GR cols="1fr 1fr 1fr">
+              <F label="Item Category"><Sel val={form.itemCategory||"Goods"} onChange={v=>sf("itemCategory",v)} opts={[{v:"Goods",l:"Goods"},{v:"Services",l:"Services"},{v:"Capital Goods",l:"Capital Goods"}]}/></F>
+              <F label="ITC Eligibility"><Sel val={form.itcEligible!==false?"eligible":"ineligible"} onChange={v=>sf("itcEligible",v==="eligible")} opts={[{v:"eligible",l:"Eligible for ITC"},{v:"ineligible",l:"Ineligible for ITC"}]}/></F>
+              <F label="GST %"><Sel val={form.gst||18} onChange={v=>sf("gst",+v)} opts={gOpts}/></F>
+            </GR>
+            <GR cols="1fr 1fr">
+              <F label="ITC Claim Status"><Sel val={form.itcClaimed?"yes":"no"} onChange={v=>sf("itcClaimed",v==="yes")} opts={[{v:"no",l:"Pending Claim"},{v:"yes",l:"Claimed"}]}/></F>
+              <F label="Vehicle / Transport No"><Inp val={form.vehicleNo||""} onChange={v=>sf("vehicleNo",v)} placeholder="MH-12-AB-1234"/></F>
+            </GR>
+
+            {form.qty>0&&form.rate>0&&<div style={{background:G(C.rd,0.07),borderRadius:7,padding:"8px 12px",marginBottom:8,border:"1px solid "+G(C.rd,0.2)}}>{[["Basic",INR((form.qty||0)*(form.rate||0)),"#E2E8F0"],["GST",INR((form.qty||0)*(form.rate||0)*(form.gst||18)/100),C.or],["Total",INR((form.qty||0)*(form.rate||0)*(1+(form.gst||18)/100)),C.rd]].map(([l,v,c],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}><span style={{color:C.si}}>{l}</span><span style={{color:c,fontWeight:i===2?700:400,fontFamily:"monospace"}}>{v}</span></div>)}</div>}
+
+            {/* Prompt 8j: Multi-Document Uploader (Purchase Invoice, Delivery Challan, EWB, Weighment slip, Royalties, Test Certificates, Warranty Card) */}
+            <div style={{...ss.card,padding:12,marginBottom:12,background:"#060C1A",border:"1px solid "+C.br}}>
+              <div style={{color:C.or,fontWeight:700,fontSize:11,marginBottom:8}}>📎 Relevant Purchase Documents Upload</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:8}}>
+                {[
+                  {k:"doc_invoice",l:"Purchase Invoice"},
+                  {k:"doc_challan",l:"Delivery Challan"},
+                  {k:"doc_ewb",l:"E-Way Bill (EWB)"},
+                  {k:"doc_weighment",l:"Weighment Slip"},
+                  {k:"doc_royalty",l:"Royalty Pass"},
+                  {k:"doc_test_cert",l:"Test Certificate"},
+                  {k:"doc_warranty",l:"Warranty Card"}
+                ].map(d=>(
+                  <div key={d.k} style={{background:"#0E1729",padding:8,borderRadius:6,border:"1px solid #1E2D45",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:C.si,marginBottom:4,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.l}</div>
+                    {form[d.k] ? (
+                      <div style={{position:"relative",width:"100%",height:50,marginBottom:4}}>
+                        <img src={form[d.k]} style={{width:"100%",height:50,objectFit:"cover",borderRadius:4,border:"1px solid "+C.tl}}/>
+                        <button type="button" onClick={()=>sf(d.k,null)} style={{position:"absolute",top:-4,right:-4,background:C.rd,border:"none",borderRadius:"50%",width:16,height:16,color:"white",cursor:"pointer",fontSize:10}}>✕</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={()=>pickImage(url=>sf(d.k,url))} style={{width:"100%",height:50,borderRadius:4,border:"1px dashed "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:9,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                        <span style={{fontSize:14}}>📷</span> Upload
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Btn full onClick={()=>{
+              if(form.poId && !hasReceipt) {
+                return alert("Cannot book Purchase Invoice! In accordance with internal controls, a Goods Received Note (GRN) or Service Received Note (SRN) must be punched for this Purchase Order first.");
+              }
+              saveTxn("purchases");
+            }}>Save Purchase Bill</Btn>
+          </div>;
+        })()}
+
+        {/* COMMERCIAL COMPARISON SHEET (CCS) MODAL (Prompt 8c) */}
+        {mod==="ccs"&&(()=>{
+          const prList = data.purchaseRequisitions||[];
+          const quotes = form.quotes || [
+            {vendor:(masters.vendors[0]||{}).name||"",rate:55000,gst:18,deliveryDays:7,paymentTerms:"Credit 30d",pastRate:56000,remarks:"Primary vendor quote"},
+            {vendor:(masters.vendors[1]||{}).name||"",rate:57000,gst:18,deliveryDays:5,paymentTerms:"Credit 45d",pastRate:58000,remarks:"Alternative quote"}
+          ];
+
+          // Compute landed rates and ranks
+          const scoredQuotes = quotes.map((q)=>{
+            const landed = Math.round((Number(q.rate)||0) * (1 + (Number(q.gst)||18)/100));
+            return { ...q, landedRate: landed };
+          });
+          const sorted = [...scoredQuotes].sort((a,b)=>(a.landedRate||999999)-(b.landedRate||999999));
+          const quotesWithRank = scoredQuotes.map(q=>{
+            const rankIdx = sorted.findIndex(s=>(s.vendor===q.vendor && s.rate===q.rate));
+            const rank = "L" + (rankIdx + 1);
+            return { ...q, rank, isL1: rankIdx === 0 };
+          });
+          const l1Vendor = sorted[0]?.vendor || "";
+
+          return <div>
+            <GR cols="1fr 1fr">
+              <F label="CCS Date"><Inp val={form.date||new Date().toISOString().slice(0,10)} onChange={v=>sf("date",v)} type="date"/></F>
+              <F label="CCS Number"><Inp val={form.ccsNo||""} onChange={v=>sf("ccsNo",v)} placeholder="CCS/001/26-27"/></F>
+            </GR>
+            <GR cols="1fr 1fr">
+              <F label="Select Purchase Requisition (PR)">
+                <Sel val={form.prId||""} onChange={v=>{
+                  sf("prId",v);
+                  const pr = prList.find(p=>p.id===v);
+                  if(pr){
+                    sf("prNo", pr.prNo);
+                    sf("material", pr.material);
+                    sf("qty", pr.qty);
+                    sf("unit", pr.unit);
+                    sf("siteId", pr.siteId);
+                  }
+                }} opts={[{v:"",l:"Select PR to compare quotes"},...prList.map(p=>({v:p.id,l:`${p.prNo} — ${p.material} (${p.qty} ${p.unit})`}))]}/>
+              </F>
+              <F label="Site"><Sel val={form.siteId} onChange={v=>sf("siteId",v)} opts={siteOpts}/></F>
+            </GR>
+            <GR cols="1.5fr 1fr">
+              <F label="Material / Scope"><Inp val={form.material||""} onChange={v=>sf("material",v)}/></F>
+              <F label="Requisition Qty"><div style={{display:"flex",gap:4}}><Num val={form.qty||0} onChange={v=>sf("qty",v)}/><Inp val={form.unit||"Nos"} onChange={v=>sf("unit",v)}/></div></F>
+            </GR>
+
+            {/* Vendor Quotes Comparison Matrix */}
+            <div style={{...ss.card,padding:12,marginBottom:12,background:"#060C1A",border:"1px solid "+C.or}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div>
+                  <span style={{color:C.or,fontWeight:700,fontSize:11}}>Vendor Quotes Evaluation (Auto L1/L2/L3 Ranking)</span>
+                  <span style={{color:C.gr,fontSize:9,marginLeft:8}}>Compares quoted rates, landed cost, delivery, payment terms &amp; past rates</span>
+                </div>
+                {quotes.length < 4 && (
+                  <button type="button" onClick={()=>{
+                    sf("quotes", [...quotes, {vendor:"",rate:0,gst:18,deliveryDays:7,paymentTerms:"Credit 30d",pastRate:0,remarks:""}]);
+                  }} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.or,background:G(C.or,0.1),color:C.or,fontSize:9,cursor:"pointer"}}>+ Add Vendor Quote</button>
+                )}
+              </div>
+
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+                  <thead><tr style={{background:"#0E1729"}}>
+                    <th style={{...ss.th,padding:"6px 4px"}}>Vendor</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"right"}}>Quoted Rate (₹)</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"center"}}>GST%</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"right",color:C.tl}}>Landed Rate</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"center"}}>Delivery</th>
+                    <th style={{...ss.th,padding:"6px 4px"}}>Payment Terms</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"right"}}>Past Rate</th>
+                    <th style={{...ss.th,padding:"6px 4px",textAlign:"center"}}>Rank</th>
+                    <th style={{...ss.th,padding:"6px 4px"}}>Remarks / Terms</th>
+                    <th style={{...ss.th,padding:"6px 4px"}}></th>
+                  </tr></thead>
+                  <tbody>{quotesWithRank.map((q,i)=>(
+                    <tr key={i} style={{background:q.isL1?"rgba(52,211,153,0.06)":"transparent",borderBottom:"1px solid #1A2840"}}>
+                      <td style={{...ss.td,padding:"4px"}}>
+                        <Sel val={q.vendor} onChange={v=>{
+                          const n=[...quotes];
+                          const pastMatch = (masters.inputRates||[]).flatMap(ir=>ir.vendorRateMemory||[]).find(vrm=>vrm.vendor===v);
+                          n[i]={...n[i],vendor:v,pastRate:pastMatch?pastMatch.rate:n[i].pastRate};
+                          sf("quotes",n);
+                        }} opts={[{v:"",l:"Select Vendor"},...masters.vendors.map(v=>v.name)]}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"right"}}>
+                        <Num val={q.rate} onChange={v=>{const n=[...quotes];n[i]={...n[i],rate:v};sf("quotes",n);}}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"center"}}>
+                        <Sel val={q.gst||18} onChange={v=>{const n=[...quotes];n[i]={...n[i],gst:+v};sf("quotes",n);}} opts={gOpts}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"right",color:C.tl,fontWeight:700}}>
+                        {INR(q.landedRate)}
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"center"}}>
+                        <input type="number" style={{...ss.inp,marginBottom:0,fontSize:10,width:45,textAlign:"center"}} value={q.deliveryDays||7} onChange={e=>{const n=[...quotes];n[i]={...n[i],deliveryDays:+e.target.value};sf("quotes",n);}}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px"}}>
+                        <Inp val={q.paymentTerms||"Credit 30d"} onChange={v=>{const n=[...quotes];n[i]={...n[i],paymentTerms:v};sf("quotes",n);}}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"right",color:C.si}}>
+                        <Num val={q.pastRate||0} onChange={v=>{const n=[...quotes];n[i]={...n[i],pastRate:v};sf("quotes",n);}}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px",textAlign:"center"}}>
+                        <Tag c={q.isL1?"g":"o"} ch={q.rank}/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px"}}>
+                        <Inp val={q.remarks||""} onChange={v=>{const n=[...quotes];n[i]={...n[i],remarks:v};sf("quotes",n);}} placeholder="Notes, quality, terms"/>
+                      </td>
+                      <td style={{...ss.td,padding:"4px"}}>
+                        {quotes.length > 2 && <button type="button" onClick={()=>{sf("quotes",quotes.filter((_,j)=>j!==i));}} style={{background:"none",border:"none",color:C.rd,cursor:"pointer",fontWeight:700}}>✕</button>}
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+
+              {l1Vendor && (
+                <div style={{marginTop:10,padding:"8px 12px",borderRadius:6,background:"rgba(52,211,153,0.1)",border:"1px solid "+C.gn,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{color:C.gn,fontSize:11,fontWeight:700}}>⭐ Recommended Bidder: {l1Vendor} (L1 Lowest Landed Cost)</span>
+                  <span style={{color:C.si,fontSize:10}}>Complies with PR specifications and delivery timeframe</span>
+                </div>
+              )}
+            </div>
+
+            <Btn full onClick={()=>{
+              if(!form.material) return alert("Please specify material / PR scope");
+              const evaluatedData = {
+                ...form,
+                quotes: quotesWithRank,
+                selectedVendor: l1Vendor,
+                status: "Evaluated"
+              };
+              saveRec("ccs", evaluatedData);
+              setModal(null);
+              setForm({});
+            }}>Save Commercial Comparison Sheet</Btn>
+          </div>;
+        })()}
 
         {/* EXPENSE */}
         {mod==="exp"&&<div>
@@ -4058,7 +5328,7 @@ function Main({user,onLogout,settings,setSettings}){
 
           return <div>
             <GR cols="1fr 1fr">
-              <F label="GRN Number"><Inp val={form.grnNo||""} onChange={v=>sf("grnNo",v)} placeholder="GRN-001"/></F>
+              <F label={form.docType==="SRN"?"SRN Number":"GRN Number"}><Inp val={form.grnNo||""} onChange={v=>sf("grnNo",v)} placeholder={form.docType==="SRN"?"SRN/001/26-27":"GRN/001/26-27"}/></F>
               <F label="Date"><Inp val={form.date||""} onChange={v=>sf("date",v)} type="date"/></F>
             </GR>
             <F label="Select Purchase Order (Required - Autoloads PO items & details)">
@@ -4118,7 +5388,7 @@ function Main({user,onLogout,settings,setSettings}){
             <Btn full onClick={()=>{
               if(!form.item||!form.qty) return alert("Please specify item and received quantity");
               saveTxn("materialReceipts");
-            }}>Save Material Receipt (GRN)</Btn>
+            }}>{form.docType==="SRN"?"Save Service Received Note (SRN)":"Save Material Receipt (GRN)"}</Btn>
           </div>;
         })()}
 
@@ -4162,11 +5432,74 @@ function Main({user,onLogout,settings,setSettings}){
             </F>
             <F label="Supervisor"><Sel val={form.supervisor||""} onChange={v=>sf("supervisor",v)} opts={[{v:"",l:"Select Supervisor"},...masters.labours.filter(l=>l.role==="Supervisor").map(l=>l.name)]}/></F>
           </GR>
-          <GR cols="1fr 1fr"><F label="Weather"><Sel val={form.weather||"Clear"} onChange={v=>sf("weather",v)} opts={["Clear","Cloudy","Rain","Hot","Cold"]}/></F><F label="Workers on Site"><Num val={form.workers||0} onChange={v=>sf("workers",v)}/></F></GR>
+          <F label="Weather Condition"><Sel val={form.weather||"Clear"} onChange={v=>sf("weather",v)} opts={["Clear","Cloudy","Rain","Hot","Cold"]}/></F>
+          
+          {/* CATEGORY-WISE WORKER ATTENDANCE (Prompt 6b) */}
+          {(()=>{
+            const cats = form.workerCats || { mason: 0, carpenter: 0, welder: 0, helper: 0, supervisor: 0, operator: 0, other: 0 };
+            const totalWorkers = Object.values(cats).reduce((a,b)=>a+(Number(b)||0), 0);
+            const siteLabours = (masters.labours||[]).filter(l=>!form.siteId||l.siteId===form.siteId||l.role);
+            return <div style={{...ss.card,padding:12,marginBottom:12,background:"#060C1A",border:"1px solid "+C.br}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div>
+                  <span style={{color:C.tl,fontWeight:700,fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>👷 Workers on Site (Category-wise Attendance)</span>
+                  <span style={{color:C.si,fontSize:10,marginLeft:8}}>Total Headcount: <b style={{color:C.or,fontSize:12}}>{totalWorkers}</b></span>
+                </div>
+                <button type="button" onClick={()=>sf("_showLabourPunch",!form._showLabourPunch)} style={{padding:"3px 8px",borderRadius:5,border:"1px solid "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace"}}>
+                  {form._showLabourPunch ? "▲ Hide Individual Attendance" : "▼ Punch Site Labours Directly"}
+                </button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:6}}>
+                {[
+                  ["mason","Masons (Raj Mistri)"],
+                  ["carpenter","Carpenters / Fitters"],
+                  ["welder","Welders / Fabricators"],
+                  ["helper","Helpers / Unskilled"],
+                  ["supervisor","Site Supervisors"],
+                  ["operator","Machine Operators"],
+                  ["other","Other Site Staff"]
+                ].map(([k,label])=>(
+                  <div key={k} style={{background:"#0A1223",padding:"6px 8px",borderRadius:6,border:"1px solid "+C.br}}>
+                    <div style={{fontSize:9,color:C.si,marginBottom:2}}>{label}</div>
+                    <input type="number" min="0" style={{...ss.inp,marginBottom:0,fontSize:11,fontWeight:700,padding:"4px 6px"}} value={cats[k]||0} onChange={ev=>{
+                      const nw = { ...cats, [k]: Math.max(0, +ev.target.value) };
+                      sf("workerCats", nw);
+                      sf("workers", Object.values(nw).reduce((a,b)=>a+(Number(b)||0), 0));
+                    }}/>
+                  </div>
+                ))}
+              </div>
+              {form._showLabourPunch && <div style={{marginTop:8,padding:"8px 10px",background:"#0A1223",borderRadius:6,border:"1px dashed "+C.br}}>
+                <div style={{color:C.si,fontSize:10,marginBottom:6,fontWeight:600}}>Select attendance for registered site workforce:</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,maxHeight:140,overflowY:"auto"}}>
+                  {siteLabours.map(l=>{
+                    const cur = (form.labourAtt||{})[l.id] || "absent";
+                    return <div key={l.id} style={{padding:"4px 6px",background:"#060C1A",borderRadius:4,fontSize:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span><b>{l.name}</b> <small style={{color:C.gr}}>({l.role})</small></span>
+                      <div style={{display:"flex",gap:2}}>
+                        {["P","A"].map(st=>(
+                          <button key={st} type="button" onClick={()=>{
+                            const nAtt = { ...(form.labourAtt||{}), [l.id]: st };
+                            sf("labourAtt", nAtt);
+                            const roleKey = (l.role||"").toLowerCase().includes("mason")?"mason":(l.role||"").toLowerCase().includes("carpenter")?"carpenter":(l.role||"").toLowerCase().includes("welder")?"welder":(l.role||"").toLowerCase().includes("super")?"supervisor":(l.role||"").toLowerCase().includes("operator")?"operator":"helper";
+                            const pCount = Object.entries(nAtt).filter(([id,val])=>val==="P" && (siteLabours.find(x=>x.id===id)?.role||"").toLowerCase().includes(roleKey.slice(0,4))).length;
+                            const nw = { ...cats, [roleKey]: pCount };
+                            sf("workerCats", nw);
+                            sf("workers", Object.values(nw).reduce((a,b)=>a+(Number(b)||0), 0));
+                          }} style={{padding:"2px 5px",borderRadius:3,border:"none",cursor:"pointer",fontSize:9,fontWeight:700,background:cur===st?(st==="P"?C.gn:C.rd):"#1E2D45",color:"#fff"}}>{st}</button>
+                        ))}
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              </div>}
+            </div>;
+          })()}
+
           <F label="Client / Engineer Instructions"><Inp val={form.clientInstructions||""} onChange={v=>sf("clientInstructions",v)} placeholder="Instructions received from client / engineer / architect today..."/></F>
           <F label="Day Remarks"><Inp val={form.remarks||""} onChange={v=>sf("remarks",v)} placeholder="Overall progress summary..."/></F>
 
-          {/* ACCIDENT REPORTING IN DPR */}
+          {/* ACCIDENT REPORTING IN DPR WITH MULTIPLE PHOTOS (Prompt 6a) */}
           <div style={{...ss.card,padding:12,marginBottom:12,background:form.hasAccident?"rgba(248,113,113,.1)":"#060C1A",border:"1px solid "+(form.hasAccident?C.rd:C.br)}}>
             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",color:form.hasAccident?C.rd:C.si,fontWeight:700,fontSize:11}}>
               <input type="checkbox" checked={!!form.hasAccident} onChange={e=>sf("hasAccident",e.target.checked)}/>
@@ -4178,6 +5511,17 @@ function Main({user,onLogout,settings,setSettings}){
                 <F label="Workers Involved"><Inp val={form.accidentWorkers||""} onChange={v=>sf("accidentWorkers",v)} placeholder="Worker names..."/></F>
               </GR>
               <F label="Incident Details & Corrective Action"><Inp val={form.accidentDesc||""} onChange={v=>sf("accidentDesc",v)} placeholder="What happened, immediate aid given, preventive measure taken..."/></F>
+              <F label="Incident / Accident Photos (Multiple photos)">
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                  {(form.accidentImages||[]).map((img,i)=><div key={i} style={{position:"relative",width:72,height:72}}>
+                    <img src={img} style={{width:72,height:72,objectFit:"cover",borderRadius:6,border:"1px solid "+C.rd}}/>
+                    <button type="button" onClick={()=>sf("accidentImages",(form.accidentImages||[]).filter((_,j)=>j!==i))} style={{position:"absolute",top:-4,right:-4,background:C.rd,border:"none",borderRadius:"50%",width:18,height:18,color:"white",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>x</button>
+                  </div>)}
+                  <button type="button" onClick={()=>pickImage(url=>sf("accidentImages",[...(form.accidentImages||[]),url]))} style={{width:72,height:72,borderRadius:6,border:"2px dashed "+C.rd,background:"transparent",color:C.rd,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,fontSize:10,fontFamily:"monospace"}}>
+                    <span style={{fontSize:20}}>📷</span>Add Photo
+                  </button>
+                </div>
+              </F>
             </div>}
           </div>
 
@@ -4262,8 +5606,15 @@ function Main({user,onLogout,settings,setSettings}){
             if(!form.jobOrderId) return alert("Please select a Job Order. DPR must be punched against a Job Order.");
             (form.consumedItems||[]).forEach(ci=>{if(!ci.item||!ci.qty)return;upd("inventory",arr=>arr.map(inv=>inv.item===ci.item&&inv.locType===ci.locType?{...inv,used:(inv.used||0)+ci.qty,close:Math.max(0,(inv.close||0)-ci.qty)}:inv));});
             if(form.hasAccident) {
-              const iss={id:uid(),title:"Accident: "+(form.accidentSeverity||"Minor incident"),desc:form.accidentDesc||"Reported during DPR",priority:"High",dueDate:form.date||new Date().toISOString().slice(0,10),status:"Open",createdBy:form.supervisor||user.name,assignedTo:"Admin User",createdAt:form.date||new Date().toISOString().slice(0,10),siteId:form.siteId,isAccident:true};
+              const iss={id:uid(),title:"Accident: "+(form.accidentSeverity||"Minor incident"),desc:(form.accidentDesc||"Reported during DPR")+(form.accidentWorkers?" (Workers: "+form.accidentWorkers+")":""),priority:"High",dueDate:form.date||new Date().toISOString().slice(0,10),status:"Open",createdBy:form.supervisor||user.name,assignedTo:"Admin User",createdAt:form.date||new Date().toISOString().slice(0,10),siteId:form.siteId,isAccident:true,images:form.accidentImages||[]};
               upd("issues",arr=>[...arr,iss]);
+            }
+            if(form.labourAtt && Object.keys(form.labourAtt).length > 0) {
+              const attEntries = Object.entries(form.labourAtt).map(([lid, status])=>{
+                const lab = (masters.labours||[]).find(l=>l.id===lid);
+                return {id:uid(), labourId:lid, name:lab?.name||lid, date:form.date||new Date().toISOString().slice(0,10), siteId:form.siteId, present:status==="P", status:status==="P"?"Present":"Absent"};
+              });
+              upd("attendance", arr=>[...arr, ...attEntries]);
             }
             saveTxn("dpr");
           }}>Save DPR</Btn>
@@ -4375,14 +5726,41 @@ function Main({user,onLogout,settings,setSettings}){
 
     {/* ═══════════ MASTER MODALS ═══════════ */}
     {modal&&modal.t==="master"&&<Modal title={(modal.oidx!=null?"EDIT — ":"ADD — ")+modal.key.toUpperCase()} onClose={()=>setModal(null)}>
-      {modal.key==="sites"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Client"><Inp val={form.client||""} onChange={v=>sf("client",v)}/></F><F label="Location"><Inp val={form.loc||""} onChange={v=>sf("loc",v)}/></F><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Completed","On Hold"]}/></F><Btn full onClick={()=>{saveM("sites",form);setModal(null);}}>Save</Btn></div>}
-      {modal.key==="clients"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Contact Person"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F><F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F><F label="Bill To Address"><Inp val={form.billTo||""} onChange={v=>sf("billTo",v)} placeholder="Registered / billing address"/></F><F label="Ship To Address"><Inp val={form.shipTo||""} onChange={v=>sf("shipTo",v)} placeholder="Site / delivery address"/></F><Btn full onClick={()=>{saveM("clients",form);setModal(null);}}>Save</Btn></div>}
+      {modal.key==="sites"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Client"><Sel val={form.client||""} onChange={v=>sf("client",v)} opts={[{v:"",l:"Select Client"},...masters.clients.map(c=>({v:c.name,l:c.name}))]}/></F><F label="Location"><Inp val={form.loc||""} onChange={v=>sf("loc",v)}/></F><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Completed","On Hold"]}/></F><Btn full onClick={()=>{saveM("sites",form);setModal(null);}}>Save Site</Btn></div>}
+      {modal.key==="clients"&&<div>
+        <F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F>
+        <F label="Contact Person"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F>
+        <F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F>
+        <F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F>
+        <F label="Bill To Address"><Inp val={form.billTo||""} onChange={v=>{sf("billTo",v);if(form.sameAsBillTo)sf("shipTo",v);}} placeholder="Registered / billing address"/></F>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+            <label style={ss.lbl}>Ship To Address</label>
+            <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10,color:C.or,cursor:"pointer",fontWeight:700}}>
+              <input type="checkbox" checked={!!form.sameAsBillTo} onChange={e=>{
+                const checked=e.target.checked;
+                sf("sameAsBillTo",checked);
+                if(checked) sf("shipTo",form.billTo||"");
+              }}/> Same as Bill to Address
+            </label>
+          </div>
+          <Inp val={form.shipTo||""} onChange={v=>sf("shipTo",v)} placeholder="Site / delivery address"/>
+        </div>
+        <Btn full onClick={()=>{saveM("clients",form);setModal(null);}}>Save Client</Btn>
+      </div>}
       {modal.key==="vendors"&&<div>
         <GR cols="1fr 1fr"><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Category"><Sel val={form.cat||""} onChange={v=>sf("cat",v)} opts={["Select","Sub-Contractor","Equipment Vendor","Material Supplier","Service Provider","Consultant","Other"]}/></F></GR>
-        <GR cols="1fr 1fr"><F label="Sub-Category (Products/Services)"><Inp val={form.subCat||""} onChange={v=>sf("subCat",v)}/></F><F label="Payment Terms"><Sel val={form.terms||""} onChange={v=>sf("terms",v)} opts={["Select","Advance","Credit 15 Days","Credit 30 Days","Credit 45 Days","Credit 60 Days","Credit 90 Days"]}/></F></GR>
+        <GR cols="1fr 1fr">
+          <F label="Sub-Category">
+            <Sel val={form.subCat||"Goods/ Material"} onChange={v=>sf("subCat",v)} opts={["Goods/ Material","Services","Both Goods & Services"]}/>
+          </F>
+          <F label="Payment Terms"><Sel val={form.terms||""} onChange={v=>sf("terms",v)} opts={["Select","Advance","Credit 15 Days","Credit 30 Days","Credit 45 Days","Credit 60 Days","Credit 90 Days"]}/></F>
+        </GR>
+        <GR cols="1fr 1fr"><F label="Does Vendor have GST Number?"><Sel val={form.hasGst||(form.gst?"yes":"no")} onChange={v=>{sf("hasGst",v);if(v==="no")sf("gst","");}} opts={[{v:"yes",l:"Yes"},{v:"no",l:"No"}]}/></F><F label="PAN Number"><Inp val={form.pan||""} onChange={v=>sf("pan",v)} placeholder="e.g. ABCDE1234F"/></F></GR>
+        {(form.hasGst||(form.gst?"yes":"no"))==="yes"&&<F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)} placeholder="15-digit GSTIN"/></F>}
         <GR cols="1fr 1fr"><F label="Contact Person"><Inp val={form.contact||""} onChange={v=>sf("contact",v)}/></F><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F></GR>
         <GR cols="1fr 1fr"><F label="Email"><Inp val={form.email||""} onChange={v=>sf("email",v)}/></F><F label="Address"><Inp val={form.address||""} onChange={v=>sf("address",v)}/></F></GR>
-        <GR cols="1fr 1fr 1fr"><F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F><F label="TDS Applicable"><Sel val={form.tdsApp?"yes":"no"} onChange={v=>sf("tdsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F><F label="TCS Applicable"><Sel val={form.tcsApp?"yes":"no"} onChange={v=>sf("tcsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F></GR>
+        <GR cols="1fr 1fr"><F label="TDS Applicable"><Sel val={form.tdsApp?"yes":"no"} onChange={v=>sf("tdsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F><F label="TCS Applicable"><Sel val={form.tcsApp?"yes":"no"} onChange={v=>sf("tcsApp",v==="yes")} opts={[{v:"no",l:"No"},{v:"yes",l:"Yes"}]}/></F></GR>
         <div style={{color:C.or,fontSize:10,marginTop:6,marginBottom:6,fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Banking Details</div>
         <GR cols="1fr 1fr"><F label="Bank Name"><Inp val={form.bankName||""} onChange={v=>sf("bankName",v)}/></F><F label="Account No"><Inp val={form.bankAccount||""} onChange={v=>sf("bankAccount",v)}/></F></GR>
         <F label="IFSC Code"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F>
@@ -4519,14 +5897,17 @@ function Main({user,onLogout,settings,setSettings}){
         <GR cols="1fr 1fr"><F label="Daily Wage"><Num val={form.wage} onChange={v=>sf("wage",v)}/></F><F label="PF Applicable"><Sel val={form.pf?"yes":"no"} onChange={v=>sf("pf",v==="yes")} opts={[{v:"yes",l:"Yes"},{v:"no",l:"No"}]}/></F></GR>
         <GR cols="1fr 1fr"><F label="UAN No."><Inp val={form.uan||""} onChange={v=>sf("uan",v)}/></F><F label="Bank Name"><Inp val={form.bankName||""} onChange={v=>sf("bankName",v)}/></F></GR>
         <GR cols="1fr 1fr"><F label="Bank Account No."><Inp val={form.bankAccount||""} onChange={v=>sf("bankAccount",v)}/></F><F label="IFSC Code"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F></GR>
-        <F label="Aadhar / PAN No"><Inp val={form.kyc||""} onChange={v=>sf("kyc",v)} placeholder="XXXX-XXXX-XXXX / ABCDE1234F"/></F>
-        <F label="KYC Documents (Aadhar / PAN photos)">
+        <GR cols="1fr 1fr">
+          <F label="Aadhaar Card No."><Inp val={form.aadhaar||""} onChange={v=>sf("aadhaar",v)} placeholder="XXXX-XXXX-XXXX"/></F>
+          <F label="PAN Card No."><Inp val={form.pan||""} onChange={v=>sf("pan",v)} placeholder="ABCDE1234F"/></F>
+        </GR>
+        <F label="KYC Documents (Multiple docs — Aadhaar, PAN, Bank Passbook, etc.)">
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
             {(form.kycDocs||[]).map((img,i)=><div key={i} style={{position:"relative",width:80,height:60}}>
               <img src={img} style={{width:80,height:60,objectFit:"cover",borderRadius:5,border:"1px solid "+C.br}}/>
               <button onClick={()=>sf("kycDocs",(form.kycDocs||[]).filter((_,j)=>j!==i))} style={{position:"absolute",top:-4,right:-4,background:C.rd,border:"none",borderRadius:"50%",width:16,height:16,color:"white",cursor:"pointer",fontSize:10}}>x</button>
             </div>)}
-            {(form.kycDocs||[]).length<3&&<button onClick={()=>pickImage(url=>sf("kycDocs",[...(form.kycDocs||[]),url]))} style={{width:80,height:60,borderRadius:5,border:"2px dashed "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}><span style={{fontSize:18}}>🪪</span>Add Doc</button>}
+            <button onClick={()=>pickImage(url=>sf("kycDocs",[...(form.kycDocs||[]),url]))} style={{width:80,height:60,borderRadius:5,border:"2px dashed "+C.br,background:"transparent",color:C.gr,cursor:"pointer",fontSize:10,fontFamily:"monospace",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}><span style={{fontSize:18}}>🪪</span>Add Doc</button>
           </div>
         </F>
         <Btn full onClick={()=>{
@@ -4539,7 +5920,7 @@ function Main({user,onLogout,settings,setSettings}){
       </div>}
       {modal.key==="machinery"&&<div><F label="Machine Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Type"><Inp val={form.type||""} onChange={v=>sf("type",v)}/></F><F label="Ownership"><Sel val={form.owner||"Owned"} onChange={v=>sf("owner",v)} opts={["Owned","Hired","Leased"]}/></F><F label="HSN Code"><Inp val={form.hsn||""} onChange={v=>sf("hsn",v)} placeholder="Machinery HSN"/></F><F label="Reg No"><Inp val={form.reg||""} onChange={v=>sf("reg",v)}/></F><F label="Rate per Day"><Num val={form.rate} onChange={v=>sf("rate",v)}/></F><GR cols="1fr 1fr"><F label="Location Type"><Sel val={form.locType||"site"} onChange={v=>sf("locType",v)} opts={[{v:"site",l:"Site"},{v:"godown",l:"Godown"}]}/></F><F label="Location"><Sel val={form.locId||""} onChange={v=>sf("locId",v)} opts={form.locType==="site"?masters.sites.map(s=>({v:s.id,l:s.name})):masters.godowns.map(g=>({v:g.id,l:g.name}))}/></F></GR><F label="Status"><Sel val={form.status||"Active"} onChange={v=>sf("status",v)} opts={["Active","Maintenance","Retired"]}/></F><Btn full onClick={()=>{saveM("machinery",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="banks"&&<div><F label="Bank Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Account No"><Inp val={form.accNo||""} onChange={v=>sf("accNo",v)}/></F><GR cols="1fr 1fr"><F label="IFSC"><Inp val={form.ifsc||""} onChange={v=>sf("ifsc",v)}/></F><F label="Branch"><Inp val={form.branch||""} onChange={v=>sf("branch",v)}/></F></GR><F label="Opening Balance"><Num val={form.openBal} onChange={v=>sf("openBal",v)}/></F><Btn full onClick={()=>{saveM("banks",form);setModal(null);}}>Save Bank</Btn></div>}
-      {modal.key==="pettyCash"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Keeper Name"><Inp val={form.keeper||""} onChange={v=>sf("keeper",v)}/></F><F label="Opening Balance"><Num val={form.openBal} onChange={v=>sf("openBal",v)}/></F><Btn full onClick={()=>{saveM("pettyCash",form);setModal(null);}}>Save</Btn></div>}
+      {modal.key==="pettyCash"&&<div><F label="Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Keeper Name"><Sel val={form.keeper||""} onChange={v=>sf("keeper",v)} opts={[{v:"",l:"Select Keeper from HR"},...masters.labours.map(l=>({v:l.name,l:l.name+" ("+l.role+")"}))]}/></F><F label="Opening Balance"><Num val={form.openBal} onChange={v=>sf("openBal",v)}/></F><Btn full onClick={()=>{saveM("pettyCash",form);setModal(null);}}>Save Petty Cash</Btn></div>}
       {modal.key==="godowns"&&<div><F label="Godown Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="Location / Address"><Inp val={form.loc||""} onChange={v=>sf("loc",v)}/></F><F label="Keeper / Incharge"><Inp val={form.keeper||""} onChange={v=>sf("keeper",v)}/></F><Btn full onClick={()=>{saveM("godowns",form);setModal(null);}}>Save</Btn></div>}
       {modal.key==="users"&&<div>
         <F label="Full Name"><Sel val={form.name||""} onChange={v=>sf("name",v)} opts={[{v:"",l:"Select from HR"},...masters.labours.map(l=>l.name)]}/></F>
@@ -4585,6 +5966,12 @@ function Main({user,onLogout,settings,setSettings}){
       </div>}
       {modal.key==="company"&&<div>
         <GR cols="1fr 1fr"><F label="Company Name"><Inp val={form.name||""} onChange={v=>sf("name",v)}/></F><F label="GST Number"><Inp val={form.gst||""} onChange={v=>sf("gst",v)}/></F></GR>
+        <GR cols="1fr 1fr">
+          <F label="Type of Company">
+            <Sel val={form.companyType||"Pvt. Ltd."} onChange={v=>sf("companyType",v)} opts={["Proprietor","Partnership","LLP","OPC","Pvt. Ltd.","Public Ltd.","Joint Venture / Other"]}/>
+          </F>
+          <F label="Company PAN"><Inp val={form.pan||""} onChange={v=>sf("pan",v)} placeholder="e.g. AABCC1234D"/></F>
+        </GR>
         <F label="Address"><Inp val={form.addr||""} onChange={v=>sf("addr",v)}/></F>
         <GR cols="1fr 1fr"><F label="Phone"><Inp val={form.phone||""} onChange={v=>sf("phone",v)}/></F><F label="Email"><Inp val={form.email||""} onChange={v=>sf("email",v)}/></F></GR>
         <GR cols="1fr 1fr"><F label="Bank Name"><Inp val={form.bank||""} onChange={v=>sf("bank",v)}/></F><F label="Account No"><Inp val={form.acc||""} onChange={v=>sf("acc",v)}/></F></GR>
@@ -4651,6 +6038,191 @@ function Main({user,onLogout,settings,setSettings}){
     })()}
 
     {del&&<Confirm label={del.label||"this record"} onOk={doDelete} onNo={()=>setDel(null)}/>}
+
+    {/* ══ VIEW JOB ORDER MODAL (Prompt 7r) ══ */}
+    {viewJo && (()=>{
+      const so = (data.saleOrders||[]).find(s=>s.id===viewJo.soId);
+      const tasks = viewJo.tasks||[];
+      const totalMat = tasks.reduce((a,t)=>a+(Number(t.matBudget)||0),0);
+      const totalLab = tasks.reduce((a,t)=>a+(Number(t.labBudget)||0),0);
+      const totalMac = tasks.reduce((a,t)=>a+(Number(t.macBudget)||0),0);
+      const grandTotal = totalMat + totalLab + totalMac;
+
+      return <Modal title={"JOB ORDER & WORK BREAKDOWN STRUCTURE — " + (viewJo.joNo||viewJo.id)} onClose={()=>setViewJo(null)} xwide>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,padding:"10px 14px",background:"#060C1A",borderRadius:8,border:"1px solid "+C.tl}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.tl}}>{viewJo.jobName || so?.desc || "Site Execution Work Order"}</div>
+            <div style={{fontSize:11,color:C.si,marginTop:2}}>Client: <b>{viewJo.client || so?.client || "—"}</b> · Site: <b>{sName(viewJo.siteId)}</b> · Date: <b>{viewJo.date}</b></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>genJOPrint(viewJo, masters.company, {siteName:sName(viewJo.siteId), so, clientName:viewJo.client})} style={{padding:"6px 14px",borderRadius:6,border:"none",background:C.pu,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:11,fontFamily:"monospace"}}>🖨 Print Job Order</button>
+            <button onClick={()=>setViewJo(null)} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #1E2D45",background:"transparent",color:C.gr,cursor:"pointer",fontSize:11}}>Close</button>
+          </div>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+          <KCard icon="🧱" label="Material Budget" value={INR(totalMat)} color={C.tl}/>
+          <KCard icon="👷" label="Labour Budget" value={INR(totalLab)} color={C.pu}/>
+          <KCard icon="🚜" label="Machinery Budget" value={INR(totalMac)} color={C.or}/>
+          <KCard icon="🎯" label="Total Job Budget" value={INR(grandTotal)} color={C.gn}/>
+        </div>
+
+        {viewJo.specialInstructions && (
+          <div style={{padding:"10px 14px",borderRadius:6,background:G(C.or,0.06),border:"1px solid "+G(C.or,0.2),marginBottom:14,fontSize:11}}>
+            <span style={{color:C.or,fontWeight:700}}>Special Instructions: </span>
+            <span style={{color:C.text}}>{viewJo.specialInstructions}</span>
+          </div>
+        )}
+
+        <div style={{...ss.card,overflowX:"auto",marginBottom:14}}>
+          <div style={{color:C.or,fontWeight:700,fontSize:12,padding:"8px 12px",borderBottom:"1px solid #1A2840"}}>Work Breakdown Structure (WBS) &amp; Itemwise Budget Ceilings</div>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+            <thead><tr style={{background:"#060C1A"}}>
+              <th style={{...ss.th,padding:"6px 8px"}}>#</th>
+              <th style={{...ss.th,padding:"6px 8px"}}>Phase</th>
+              <th style={{...ss.th,padding:"6px 8px"}}>Task Name</th>
+              <th style={{...ss.th,padding:"6px 8px",textAlign:"right"}}>Allocated Qty</th>
+              <th style={{...ss.th,padding:"6px 8px"}}>Schedule</th>
+              <th style={{...ss.th,padding:"6px 8px",textAlign:"right"}}>Mat. Budget</th>
+              <th style={{...ss.th,padding:"6px 8px",textAlign:"right"}}>Lab. Budget</th>
+              <th style={{...ss.th,padding:"6px 8px",textAlign:"right"}}>Mac. Budget</th>
+              <th style={{...ss.th,padding:"6px 8px",textAlign:"right"}}>Total Est.</th>
+            </tr></thead>
+            <tbody>{tasks.map((t,idx)=>{
+              const rowTot = (Number(t.matBudget)||0) + (Number(t.labBudget)||0) + (Number(t.macBudget)||0);
+              return <tr key={idx} style={{borderBottom:"1px solid #1A2840"}}>
+                <td style={{...ss.td,padding:"6px 8px"}}>{idx+1}</td>
+                <td style={{...ss.td,padding:"6px 8px"}}><span style={{color:C.tl,fontWeight:700}}>{t.phase}</span></td>
+                <td style={{...ss.td,padding:"6px 8px"}}><b>{t.name}</b></td>
+                <td style={{...ss.td,padding:"6px 8px",textAlign:"right",color:C.or,fontWeight:700}}>{t.qty} {t.unit}</td>
+                <td style={{...ss.td,padding:"6px 8px",color:C.gr}}>{t.estStartDate||"—"} to {t.estEndDate||"—"}</td>
+                <td style={{...ss.td,padding:"6px 8px",textAlign:"right"}}>{INR(t.matBudget||0)}</td>
+                <td style={{...ss.td,padding:"6px 8px",textAlign:"right"}}>{INR(t.labBudget||0)}</td>
+                <td style={{...ss.td,padding:"6px 8px",textAlign:"right"}}>{INR(t.macBudget||0)}</td>
+                <td style={{...ss.td,padding:"6px 8px",textAlign:"right",fontWeight:700,color:C.gn}}>{INR(rowTot)}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </Modal>;
+    })()}
+
+    {/* ══ VIEW PURCHASE REQUISITION MODAL (Prompt 8a) ══ */}
+    {viewPr && (
+      <Modal title={"PURCHASE REQUISITION — " + (viewPr.prNo||viewPr.id)} onClose={()=>setViewPr(null)}>
+        <div style={{padding:"12px 14px",background:"#060C1A",borderRadius:8,border:"1px solid "+C.tl,marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <span style={{fontSize:15,fontWeight:700,color:C.or}}>{viewPr.material}</span>
+              <div style={{fontSize:11,color:C.si,marginTop:2}}>Site: <b>{sName(viewPr.siteId)}</b> · Date: <b>{viewPr.date}</b></div>
+            </div>
+            <Tag c={viewPr.status==="Approved"?"g":viewPr.status==="Rejected"?"r":"o"} ch={viewPr.status||"Pending"}/>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:12}}>
+          <KCard icon="📦" label="Requisition Qty" value={`${viewPr.qty} ${viewPr.unit||""}`} color={C.or}/>
+          <KCard icon="📅" label="Required By" value={viewPr.reqByDate||"—"} color={C.tl}/>
+          <KCard icon="👷" label="Raised By" value={viewPr.generatedBy||"Site"} color={C.pu}/>
+        </div>
+        <div style={{...ss.card,padding:12,marginBottom:12,background:"#060C1A",fontSize:11,display:"flex",flexDirection:"column",gap:6}}>
+          <div><span style={{color:C.si}}>Reason for Requisition:</span> <b style={{color:C.text}}>{viewPr.reason||"—"}</b></div>
+          <div><span style={{color:C.si}}>Linked Job Order:</span> <b style={{color:C.text}}>{viewPr.joId?((data.jobOrders||[]).find(j=>j.id===viewPr.joId)?.joNo||viewPr.joId):"—"}</b></div>
+          <div><span style={{color:C.si}}>Approved By:</span> <b style={{color:viewPr.approvedBy?C.gn:C.rd}}>{viewPr.approvedBy||"Pending Approval"}</b></div>
+          <div><span style={{color:C.si}}>Remarks / Preferred Terms:</span> <span style={{color:C.text}}>{viewPr.remarks||"—"}</span></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+          <Btn onClick={()=>setViewPr(null)}>Close</Btn>
+        </div>
+      </Modal>
+    )}
+
+    {/* ══ VIEW COMMERCIAL COMPARISON SHEET (CCS) MODAL (Prompt 8c) ══ */}
+    {viewCcs && (()=>{
+      const quotes = viewCcs.quotes||[];
+      const l1 = quotes.find(q=>q.rank==="L1"||q.isL1) || quotes[0] || {};
+
+      return <Modal title={"COMMERCIAL COMPARISON SHEET — " + (viewCcs.ccsNo||viewCcs.id)} onClose={()=>setViewCcs(null)} xwide>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,padding:"10px 14px",background:"#060C1A",borderRadius:8,border:"1px solid "+C.or}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:C.or}}>{viewCcs.material} — Commercial Evaluation</div>
+            <div style={{fontSize:11,color:C.si,marginTop:2}}>PR Ref: <b>{viewCcs.prNo||viewCcs.prId||"—"}</b> · Requisition Qty: <b>{viewCcs.qty} {viewCcs.unit}</b> · Site: <b>{sName(viewCcs.siteId)}</b> · Date: <b>{viewCcs.date}</b></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>printCCS(viewCcs, masters.company)} style={{padding:"6px 14px",borderRadius:6,border:"none",background:C.or,color:"#000",cursor:"pointer",fontWeight:700,fontSize:11,fontFamily:"monospace"}}>🖨 Print CCS</button>
+            {viewCcs.status!=="PO Issued" && (
+              <button onClick={()=>{
+                const chosenQuote = l1;
+                setForm({
+                  date: new Date().toISOString().slice(0,10),
+                  poNo: nextDocNo("PO", data.purchaseOrders||[], "poNo"),
+                  siteId: viewCcs.siteId,
+                  vendor: chosenQuote.vendor || viewCcs.selectedVendor,
+                  prId: viewCcs.prId,
+                  prNo: viewCcs.prNo,
+                  ccsId: viewCcs.id,
+                  ccsNo: viewCcs.ccsNo,
+                  bidderRank: chosenQuote.rank || "L1",
+                  landedRate: chosenQuote.landedRate,
+                  deliveryDays: chosenQuote.deliveryDays,
+                  paymentTerms: chosenQuote.paymentTerms,
+                  status: "Active",
+                  desc: `Procurement against ${viewCcs.prNo||"PR"} as per evaluated CCS ${viewCcs.ccsNo} (${chosenQuote.rank||"L1"} Bidder)`,
+                  vendorNote: `Issued under CCS ${viewCcs.ccsNo} (${chosenQuote.rank||"L1"} Rank). Delivery within ${chosenQuote.deliveryDays||7} days. Terms: ${chosenQuote.paymentTerms||"Credit 30d"}.`,
+                  lineItems: [{
+                    item: viewCcs.material,
+                    desc: viewCcs.material,
+                    hsn: "72142000",
+                    prQty: Number(viewCcs.qty)||1,
+                    qty: Number(viewCcs.qty)||1,
+                    unit: viewCcs.unit||"Nos",
+                    rate: chosenQuote.rate||500,
+                    gst: chosenQuote.gst||18,
+                    disc: 0
+                  }]
+                });
+                setViewCcs(null);
+                setModal({t:"txn", mod:"po"});
+              }} style={{padding:"6px 14px",borderRadius:6,border:"none",background:C.gn,color:"#000",cursor:"pointer",fontWeight:700,fontSize:11,fontFamily:"monospace"}}>📑 Issue Purchase Order</button>
+            )}
+            <button onClick={()=>setViewCcs(null)} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #1E2D45",background:"transparent",color:C.gr,cursor:"pointer",fontSize:11}}>Close</button>
+          </div>
+        </div>
+
+        <div style={{...ss.card,padding:12,marginBottom:14,background:"rgba(52,211,153,0.08)",border:"1px solid "+C.gn,fontSize:11,color:C.gn}}>
+          💡 <b>Strategic Recommendation:</b> Vendor <b>{viewCcs.selectedVendor||l1.vendor||"L1 Bidder"}</b> is recommended for purchase order award based on lowest landed cost evaluation (₹{Number(l1.landedRate||0).toLocaleString("en-IN")}/{viewCcs.unit}), verified delivery schedule ({l1.deliveryDays||7} days), and compliance with PR specifications.
+        </div>
+
+        <div style={{...ss.card,overflowX:"auto",marginBottom:14}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead><tr style={{background:"#060C1A"}}>
+              <th style={{...ss.th,padding:"7px 10px"}}>Rank</th>
+              <th style={{...ss.th,padding:"7px 10px"}}>Vendor / Bidder</th>
+              <th style={{...ss.th,padding:"7px 10px",textAlign:"right"}}>Quoted Rate</th>
+              <th style={{...ss.th,padding:"7px 10px",textAlign:"center"}}>GST%</th>
+              <th style={{...ss.th,padding:"7px 10px",textAlign:"right",color:C.tl}}>Landed Rate</th>
+              <th style={{...ss.th,padding:"7px 10px",textAlign:"center"}}>Delivery</th>
+              <th style={{...ss.th,padding:"7px 10px"}}>Payment Terms</th>
+              <th style={{...ss.th,padding:"7px 10px",textAlign:"right"}}>Past Rate</th>
+              <th style={{...ss.th,padding:"7px 10px"}}>Remarks &amp; Conditions</th>
+            </tr></thead>
+            <tbody>{quotes.map((q,idx)=>{
+              const isL1 = q.rank==="L1" || q.isL1;
+              return <tr key={idx} style={{background:isL1?"rgba(52,211,153,0.06)":"transparent",borderBottom:"1px solid #1A2840"}}>
+                <td style={{...ss.td,padding:"7px 10px"}}><Tag c={isL1?"g":"o"} ch={q.rank||("L"+(idx+1))}/></td>
+                <td style={{...ss.td,padding:"7px 10px"}}><b>{q.vendor}</b>{isL1&&<span style={{color:C.gn,marginLeft:6,fontSize:10}}>⭐ Recommended</span>}</td>
+                <td style={{...ss.td,padding:"7px 10px",textAlign:"right"}}>{INR(q.rate)}</td>
+                <td style={{...ss.td,padding:"7px 10px",textAlign:"center"}}>{q.gst||18}%</td>
+                <td style={{...ss.td,padding:"7px 10px",textAlign:"right",color:C.tl,fontWeight:700}}>{INR(q.landedRate||Math.round((q.rate||0)*(1+(q.gst||18)/100)))}</td>
+                <td style={{...ss.td,padding:"7px 10px",textAlign:"center"}}>{q.deliveryDays||"—"} Days</td>
+                <td style={{...ss.td,padding:"7px 10px"}}>{q.paymentTerms||"—"}</td>
+                <td style={{...ss.td,padding:"7px 10px",textAlign:"right",color:C.si}}>{INR(q.pastRate||0)}</td>
+                <td style={{...ss.td,padding:"7px 10px",color:C.gr}}>{q.remarks||"—"}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </Modal>;
+    })()}
 
     {showBackupModal && (
       <BackupRestoreModal
